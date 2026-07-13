@@ -1,11 +1,8 @@
-import { Elysia } from "elysia";
-import { cors } from "@elysiajs/cors";
+import { createApp } from "./app";
+import { env } from "./env";
 
-const app = new Elysia()
-  .use(cors())
-  .get("/api", () => ({ message: "Hello Elysia" }))
-  .listen(3001);
+const app = createApp().listen(env.PORT);
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+console.log(`NexTech API is running at ${app.server?.hostname}:${app.server?.port}`);
+
+export type App = typeof app;

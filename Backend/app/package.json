@@ -2,15 +2,23 @@
   "name": "app",
   "version": "1.0.50",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
+    "db:generate": "bunx drizzle-kit@0.31.8 generate",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "db:seed": "bun run src/db/seed.ts",
+    "openapi:lint": "bun run scripts/lint-openapi.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.2",
-    "elysia": "latest"
+    "drizzle-orm": "0.45.2",
+    "elysia": "1.4.28"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "typescript": "5.9.3"
   },
   "module": "src/index.js"
 }
