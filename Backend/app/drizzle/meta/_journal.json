@@ -15,6 +15,13 @@
       "when": 1788715985221,
       "tag": "0001_nasty_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788769612606,
+      "tag": "0002_tricky_emma_frost",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,8 @@ import {
     uuid,
     varchar,
     primaryKey,
+    inet,
+    jsonb,
     } from "drizzle-orm/pg-core";
 
     export const users = pgTable(
@@ -266,4 +268,123 @@ import {
             table.registrationId,
             ),
         ],
+    );
+    export const userFavoriteOrganizers = pgTable(
+    "user_favorite_organizers",
+    {
+        userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+        organizerId: uuid("organizer_id")
+        .notNull()
+        .references(() => organizers.id, { onDelete: "cascade" }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        primaryKey({ columns: [table.userId, table.organizerId] }),
+        index("user_favorite_organizers_organizer_id_index").on(
+        table.organizerId,
+        ),
+    ],
+    );
+
+    export const userFavoriteCategories = pgTable(
+    "user_favorite_categories",
+    {
+        userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+        categoryId: uuid("category_id")
+        .notNull()
+        .references(() => categories.id, { onDelete: "cascade" }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        primaryKey({ columns: [table.userId, table.categoryId] }),
+        index("user_favorite_categories_category_id_index").on(
+        table.categoryId,
+        ),
+    ],
+    );
+
+    export const eventChangeLogs = pgTable(
+    "event_change_logs",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        eventId: uuid("event_id")
+        .notNull()
+        .references(() => events.id, { onDelete: "restrict" }),
+        changedByUserId: uuid("changed_by_user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        changeType: varchar("change_type", { length: 32 }).notNull(),
+        beforeData: jsonb("before_data").$type<Record<string, unknown>>(),
+        afterData: jsonb("after_data").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("event_change_logs_event_created_at_index").on(
+        table.eventId,
+        table.createdAt,
+        ),
+    ],
+    );
+
+    export const moderationActions = pgTable(
+    "moderation_actions",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        actorUserId: uuid("actor_user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        targetType: varchar("target_type", { length: 32 }).notNull(),
+        targetId: uuid("target_id").notNull(),
+        action: varchar("action", { length: 32 }).notNull(),
+        reason: text("reason"),
+        metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("moderation_actions_target_index").on(
+        table.targetType,
+        table.targetId,
+        ),
+    ],
+    );
+
+    export const operationLogs = pgTable(
+    "operation_logs",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        actorUserId: uuid("actor_user_id").references(() => users.id, {
+        onDelete: "set null",
+        }),
+        action: varchar("action", { length: 64 }).notNull(),
+        resourceType: varchar("resource_type", { length: 32 }).notNull(),
+        resourceId: uuid("resource_id"),
+        ipAddress: inet("ip_address"),
+        userAgent: text("user_agent"),
+        metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("operation_logs_resource_index").on(
+        table.resourceType,
+        table.resourceId,
+        ),
+        index("operation_logs_actor_created_at_index").on(
+        table.actorUserId,
+        table.createdAt,
+        ),
+    ],
     );
