@@ -1,15 +1,14 @@
-'use client'
-import { useEffect, useState } from "react";
+import { EventSearch } from "./components/event-search";
+import { UserShell } from "./components/user-shell";
+import { Suspense } from "react";
 
 export default function Home() {
-  const [data, setData] = useState("");
-
-  useEffect(() => {
-    fetch("http://localhost:3001/api")
-      .then(res => res.json())
-      .then(data => setData(data.message))
-      .catch(() => setData("API error"));
-  }, []);
-  
-  return <div>{data}</div>;
+  return (
+    <UserShell active="search">
+      <section className="page-heading top-page-heading"><h1>参加したいイベントを<br />見つけよう</h1></section>
+      <Suspense fallback={<p className="empty-state">イベントを読み込んでいます…</p>}>
+        <EventSearch />
+      </Suspense>
+    </UserShell>
+  );
 }
