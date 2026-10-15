@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type MenuItem = {
   label: string;
@@ -18,6 +21,8 @@ const menuItems: MenuItem[] = [
 ];
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <nav className="min-h-screen w-65 bg-[#011B40] p-4 text-white">
       <div className="flex items-center gap-2 mb-16 px-3 font-bold">
@@ -25,17 +30,23 @@ export default function Sidebar() {
         <div className="text-[24px]">NexTech</div>
       </div>
       <ul className="flex flex-col items-center space-y-2">
-        {menuItems.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className="flex items-center gap-4 rounded w-50 h-14 px-4 py-6 text-xs hover:bg-[#002A7F]"
-            >
-              <Image src={item.iconSrc} alt="" width={24} height={24} />
-              {item.label}
-            </Link>
-          </li>
-        ))}
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href;
+
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex items-center gap-4 rounded-xl w-50 h-14 px-4 py-6 text-xs hover:bg-[#002A7F]
+                  ${ isActive ? "bg-[#0051F5]" : "" }`}
+              >
+                <Image src={item.iconSrc} alt="" width={24} height={24} />
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
