@@ -1,4 +1,8 @@
 import {
+    sql
+    } from "drizzle-orm";
+
+import {
     boolean,
     index,
     integer,
@@ -9,14 +13,16 @@ import {
     uuid,
     varchar,
     primaryKey,
+    inet,
+    jsonb,
+    check,
     } from "drizzle-orm/pg-core";
 
     export const users = pgTable(
     "users",
     {
         id: uuid("id").defaultRandom().primaryKey(),
-        email: varchar("email", { length: 254 }).notNull(),
-        passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+        email: varchar("email", { length: 254 }).notNull(),        passwordHash: varchar("password_hash", { length: 255 }).notNull(),
         displayName: varchar("display_name", { length: 100 }).notNull(),
         fullName: varchar("full_name", { length: 100 }),
         profileText: text("profile_text"),
@@ -31,7 +37,13 @@ import {
         .defaultNow(),
         deletedAt: timestamp("deleted_at", { withTimezone: true }),
     },
-    (table) => [uniqueIndex("users_email_unique").on(table.email)],
+    (table) => [
+        uniqueIndex("users_email_lower_unique").on(sql`lower(${table.email})`),
+        check(
+            "users_status_valid",
+            sql`${table.status} in ('active', 'inactive', 'suspended')`,
+        ),
+    ],
     );
 
     export const organizers = pgTable(
@@ -57,6 +69,10 @@ import {
     (table) => [
         uniqueIndex("organizers_slug_unique").on(table.slug),
         index("organizers_owner_user_id_index").on(table.ownerUserId),
+        check(
+            "organizers_status_valid",
+            sql`${table.status} in ('active', 'inactive', 'suspended')`,
+        ),
     ],
     );
 
@@ -79,7 +95,13 @@ import {
         .notNull()
         .defaultNow(),
     },
-    (table) => [uniqueIndex("categories_slug_unique").on(table.slug)],
+    (table) => [
+        uniqueIndex("categories_slug_unique").on(table.slug),
+        check(
+            "categories_status_valid",
+            sql`${table.status} in ('active', 'inactive')`,
+        ),
+    ],
     );
 
     export const tags = pgTable(
@@ -146,6 +168,46 @@ import {
         index("events_organizer_id_index").on(table.organizerId),
         index("events_category_id_index").on(table.categoryId),
         index("events_start_at_index").on(table.startAt),
+        index("events_status_visibility_start_at_index").on(
+            table.status,
+            table.visibility,
+            table.startAt,
+        ),
+        check("events_capacity_positive", sql`${table.capacity} > 0`),
+        check(
+            "events_format_valid",
+            sql`${table.format} in ('online', 'offline', 'hybrid')`,
+        ),
+        check(
+            "events_status_valid",
+            sql`${table.status} in ('draft', 'published', 'cancelled', 'completed')`,
+        ),
+        check(
+            "events_visibility_valid",
+            sql`${table.visibility} in ('public', 'private', 'unlisted')`,
+        ),
+        check(
+            "events_format_location_valid",
+            sql`(
+                (${table.format} = 'online' and nullif(trim(${table.onlineUrl}), '') is not null)
+                or (${table.format} = 'offline' and nullif(trim(${table.venueName}), '') is not null)
+                or (
+                    ${table.format} = 'hybrid'
+                    and nullif(trim(${table.onlineUrl}), '') is not null
+                    and nullif(trim(${table.venueName}), '') is not null
+                )
+            )`,
+        ),
+        check("events_time_order", sql`${table.endAt} > ${table.startAt}`),
+        check(
+            "events_application_deadline_before_start",
+            sql`${table.applicationDeadline} IS NULL OR ${table.applicationDeadline} <= ${table.startAt}`,
+        ),
+        check(
+            "events_application_window_order",
+            sql`${table.applicationStartAt} IS NULL OR ${table.applicationDeadline} IS NULL OR ${table.applicationStartAt} <= ${table.applicationDeadline}`,
+        ),
+        check("events_version_positive", sql`${table.version} >= 1`),
     ],
 );
 
@@ -162,6 +224,10 @@ import {
         },
         (table) => [
             primaryKey({ columns: [table.userId, table.roleCode] }),
+            check(
+                "user_roles_role_code_valid",
+                sql`${table.roleCode} in ('participant', 'organizer', 'admin')`,
+            ),
         ],
     );
 
@@ -184,6 +250,10 @@ import {
         (table) => [
             primaryKey({ columns: [table.organizerId, table.userId] }),
             index("organizer_members_user_id_index").on(table.userId),
+            check(
+                "organizer_members_member_role_valid",
+                sql`${table.memberRole} in ('owner', 'admin', 'member')`,
+            ),
         ],
     );
 
@@ -233,8 +303,20 @@ import {
             table.eventId,
             table.userId,
             ),
+            uniqueIndex("registrations_waitlist_position_unique")
+                .on(table.eventId, table.waitlistPosition)
+                .where(sql`${table.status} = 'waitlisted'`),
             index("registrations_event_status_index").on(table.eventId, table.status),
             index("registrations_user_id_index").on(table.userId),
+            check(
+                "registrations_waitlist_position_positive",
+                sql`${table.waitlistPosition} IS NULL OR ${table.waitlistPosition} > 0`,
+            ),
+            check(
+                "registrations_status_valid",
+                sql`${table.status} in ('pending', 'confirmed', 'waitlisted', 'cancelled', 'checked_in', 'no_show')`,
+            ),
+            check("registrations_version_positive", sql`${table.version} >= 1`),
         ],
     );
 
@@ -245,12 +327,6 @@ import {
             registrationId: uuid("registration_id")
             .notNull()
             .references(() => registrations.id, { onDelete: "restrict" }),
-            eventId: uuid("event_id")
-            .notNull()
-            .references(() => events.id, { onDelete: "restrict" }),
-            userId: uuid("user_id")
-            .notNull()
-            .references(() => users.id, { onDelete: "restrict" }),
             fromStatus: varchar("from_status", { length: 32 }),
             toStatus: varchar("to_status", { length: 32 }).notNull(),
             changedByUserId: uuid("changed_by_user_id").references(() => users.id, {
@@ -262,8 +338,136 @@ import {
             .defaultNow(),
         },
         (table) => [
-            index("registration_status_histories_registration_id_index").on(
-            table.registrationId,
+            index("registration_status_histories_registration_created_at_index").on(
+                table.registrationId,
+                table.createdAt,
+            ),
+            check(
+                "registration_status_histories_from_status_valid",
+                sql`${table.fromStatus} is null or ${table.fromStatus} in ('pending', 'confirmed', 'waitlisted', 'cancelled', 'checked_in', 'no_show')`,
+            ),
+            check(
+                "registration_status_histories_to_status_valid",
+                sql`${table.toStatus} in ('pending', 'confirmed', 'waitlisted', 'cancelled', 'checked_in', 'no_show')`,
             ),
         ],
+    );
+    export const userFavoriteOrganizers = pgTable(
+    "user_favorite_organizers",
+    {
+        userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+        organizerId: uuid("organizer_id")
+        .notNull()
+        .references(() => organizers.id, { onDelete: "cascade" }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        primaryKey({ columns: [table.userId, table.organizerId] }),
+        index("user_favorite_organizers_organizer_id_index").on(
+        table.organizerId,
+        ),
+    ],
+    );
+
+    export const userFavoriteCategories = pgTable(
+    "user_favorite_categories",
+    {
+        userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+        categoryId: uuid("category_id")
+        .notNull()
+        .references(() => categories.id, { onDelete: "cascade" }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        primaryKey({ columns: [table.userId, table.categoryId] }),
+        index("user_favorite_categories_category_id_index").on(
+        table.categoryId,
+        ),
+    ],
+    );
+
+    export const eventChangeLogs = pgTable(
+    "event_change_logs",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        eventId: uuid("event_id")
+        .notNull()
+        .references(() => events.id, { onDelete: "restrict" }),
+        changedByUserId: uuid("changed_by_user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        changeType: varchar("change_type", { length: 32 }).notNull(),
+        beforeData: jsonb("before_data").$type<Record<string, unknown>>(),
+        afterData: jsonb("after_data").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("event_change_logs_event_created_at_index").on(
+        table.eventId,
+        table.createdAt,
+        ),
+    ],
+    );
+
+    export const moderationActions = pgTable(
+    "moderation_actions",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        actorUserId: uuid("actor_user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        targetType: varchar("target_type", { length: 32 }).notNull(),
+        targetId: uuid("target_id").notNull(),
+        action: varchar("action", { length: 32 }).notNull(),
+        reason: text("reason"),
+        metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("moderation_actions_target_index").on(
+        table.targetType,
+        table.targetId,
+        ),
+    ],
+    );
+
+    export const operationLogs = pgTable(
+    "operation_logs",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        actorUserId: uuid("actor_user_id").references(() => users.id, {
+        onDelete: "set null",
+        }),
+        action: varchar("action", { length: 64 }).notNull(),
+        resourceType: varchar("resource_type", { length: 32 }).notNull(),
+        resourceId: uuid("resource_id"),
+        ipAddress: inet("ip_address"),
+        userAgent: text("user_agent"),
+        metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("operation_logs_resource_index").on(
+        table.resourceType,
+        table.resourceId,
+        ),
+        index("operation_logs_actor_created_at_index").on(
+        table.actorUserId,
+        table.createdAt,
+        ),
+    ],
     );
