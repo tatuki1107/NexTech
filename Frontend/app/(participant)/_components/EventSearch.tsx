@@ -1,8 +1,8 @@
 "use client";
 
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import Link from "next/link";
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -15,11 +15,14 @@ type ApiEvent = {
   venueName: string | null;
   startAt: string;
   endAt: string;
+  applicationDeadline: string | null;
   capacity: number;
   categoryName: string;
   organizerName: string;
   seatsLeft: number;
 };
+
+type SortOption = "おすすめ" | "申し込み期間" | "残席順";
 
 function isApiEvent(value: unknown): value is ApiEvent {
   return (
@@ -37,6 +40,9 @@ function isApiEvent(value: unknown): value is ApiEvent {
     typeof value.startAt === "string" &&
     "endAt" in value &&
     typeof value.endAt === "string" &&
+    "applicationDeadline" in value &&
+    (typeof value.applicationDeadline === "string" ||
+      value.applicationDeadline === null) &&
     "capacity" in value &&
     typeof value.capacity === "number" &&
     "categoryName" in value &&
@@ -80,6 +86,22 @@ function matchesDateFilter(eventDate: Date, filter: string) {
   return `${eventDate.getMonth() + 1}/${eventDate.getDate()}` === filter;
 }
 
+function sortEvents(events: ApiEvent[], sort: SortOption) {
+  if (sort === "おすすめ") return events;
+
+  return [...events].sort((firstEvent, secondEvent) => {
+    if (sort === "残席順") return firstEvent.seatsLeft - secondEvent.seatsLeft;
+
+    const firstDeadline = firstEvent.applicationDeadline
+      ? new Date(firstEvent.applicationDeadline).getTime()
+      : Number.POSITIVE_INFINITY;
+    const secondDeadline = secondEvent.applicationDeadline
+      ? new Date(secondEvent.applicationDeadline).getTime()
+      : Number.POSITIVE_INFINITY;
+    return firstDeadline - secondDeadline;
+  });
+}
+
 export function EventSearch() {
   const searchParams = useSearchParams();
   const [events, setEvents] = useState<ApiEvent[]>([]);
@@ -91,6 +113,15 @@ export function EventSearch() {
   const [location, setLocation] = useState(() =>
     searchParams.get("format") === "オンライン" ? "オンライン" : "すべて",
   );
+  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
+  const [advancedKeyword, setAdvancedKeyword] = useState("");
+  const [advancedDate, setAdvancedDate] = useState("すべて");
+  const [advancedTags, setAdvancedTags] = useState<string[]>([]);
+  const [advancedFormat, setAdvancedFormat] = useState("すべて");
+  const [advancedSort, setAdvancedSort] = useState<SortOption>("おすすめ");
+  const [appliedTags, setAppliedTags] = useState<string[]>([]);
+  const [appliedFormat, setAppliedFormat] = useState("すべて");
+  const [appliedSort, setAppliedSort] = useState<SortOption>("おすすめ");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -120,9 +151,8 @@ export function EventSearch() {
     return () => controller.abort();
   }, []);
 
-  const filteredEvents = useMemo(
-    () =>
-      events.filter((event) => {
+  const filteredEvents = useMemo(() => {
+    const matchedEvents = events.filter((event) => {
         const searchableText =
           `${event.title} ${event.categoryName} ${event.organizerName}`.toLowerCase();
         const eventDate = new Date(event.startAt);
@@ -142,19 +172,39 @@ export function EventSearch() {
           (requestedFormat === "オンライン"
             ? event.format === "online"
             : event.format !== "online");
+        const hasAdvancedTag =
+          appliedTags.length === 0 || appliedTags.includes(event.categoryName);
+        const hasAdvancedFormat =
+          appliedFormat === "すべて" ||
+          (appliedFormat === "オンライン"
+            ? event.format === "online"
+            : event.format !== "online");
         return (
           searchableText.includes(keyword.toLowerCase()) &&
           hasMatchingTag &&
           hasMatchingFormat &&
+          hasAdvancedTag &&
+          hasAdvancedFormat &&
           matchesDateFilter(eventDate, date) &&
           (tag === "すべて" || event.categoryName === tag) &&
           (location === "すべて" ||
             eventLocation === location ||
             (location === "オンライン" && event.format === "online"))
         );
-      }),
-    [date, events, keyword, location, searchParams, tag],
-  );
+      });
+
+    return sortEvents(matchedEvents, appliedSort);
+  }, [
+    appliedFormat,
+    appliedSort,
+    appliedTags,
+    date,
+    events,
+    keyword,
+    location,
+    searchParams,
+    tag,
+  ]);
 
   const tags = Array.from(new Set(events.map((event) => event.categoryName)));
   const locations = Array.from(
@@ -182,6 +232,47 @@ export function EventSearch() {
     (setter: (value: string) => void) =>
     (event: ChangeEvent<HTMLSelectElement>) =>
       setter(event.target.value);
+  const toggleAdvancedTag = (targetTag: string) => {
+    setAdvancedTags((current) =>
+      current.includes(targetTag)
+        ? current.filter((item) => item !== targetTag)
+        : [...current, targetTag],
+    );
+  };
+  const advancedResultCount = events.filter((event) => {
+    const searchableText =
+      `${event.title} ${event.categoryName} ${event.organizerName}`.toLowerCase();
+    const hasMatchingTag =
+      advancedTags.length === 0 || advancedTags.includes(event.categoryName);
+    const hasMatchingFormat =
+      advancedFormat === "すべて" ||
+      (advancedFormat === "オンライン"
+        ? event.format === "online"
+        : event.format !== "online");
+    return (
+      searchableText.includes(advancedKeyword.toLowerCase()) &&
+      hasMatchingTag &&
+      hasMatchingFormat &&
+      matchesDateFilter(new Date(event.startAt), advancedDate)
+    );
+  }).length;
+  const resetAdvancedSearch = () => {
+    setAdvancedKeyword("");
+    setAdvancedDate("すべて");
+    setAdvancedTags([]);
+    setAdvancedFormat("すべて");
+    setAdvancedSort("おすすめ");
+  };
+  const applyAdvancedSearch = () => {
+    setKeyword(advancedKeyword);
+    setDate(advancedDate);
+    setTag("すべて");
+    setLocation("すべて");
+    setAppliedTags(advancedTags);
+    setAppliedFormat(advancedFormat);
+    setAppliedSort(advancedSort);
+    setIsAdvancedSearchOpen(false);
+  };
 
   return (
     <>
@@ -226,11 +317,125 @@ export function EventSearch() {
             </select>
           </label>
         </div>
-        <Link className="advanced-search-link" href="/search">
+        <button
+          className="advanced-search-link"
+          type="button"
+          onClick={() => setIsAdvancedSearchOpen(true)}
+        >
           <FilterAltOutlinedIcon />
           検索条件を詳しく設定
-        </Link>
+        </button>
       </section>
+      {isAdvancedSearchOpen ? (
+        <div
+          className="search-modal-backdrop"
+          role="presentation"
+          onClick={() => setIsAdvancedSearchOpen(false)}
+        >
+          <section
+            className="top-search-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="advanced-search-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-handle" />
+            <header>
+              <h2 id="advanced-search-title">検索条件</h2>
+              <button
+                type="button"
+                aria-label="検索条件を閉じる"
+                onClick={() => setIsAdvancedSearchOpen(false)}
+              >
+                <CloseOutlinedIcon />
+              </button>
+            </header>
+            <div className="top-search-modal-content">
+              <label className="filter-label-text">
+                キーワード
+                <span className="keyword-field">
+                  <SearchOutlinedIcon />
+                  <input
+                    value={advancedKeyword}
+                    onChange={(event) => setAdvancedKeyword(event.target.value)}
+                    placeholder="イベント名・主催者名で検索"
+                  />
+                </span>
+              </label>
+              <h3>開催日</h3>
+              <div className="date-chip-grid">
+                {["すべて", "今週", "今月", "日付指定"].map((item) => (
+                  <button
+                    className={advancedDate === item ? "is-selected" : ""}
+                    type="button"
+                    key={item}
+                    onClick={() => setAdvancedDate(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <h3>タグ</h3>
+              <div className="chip-grid">
+                {tags.map((item) => (
+                  <button
+                    className={`filter-chip ${advancedTags.includes(item) ? "is-selected" : ""}`}
+                    type="button"
+                    key={item}
+                    onClick={() => toggleAdvancedTag(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <h3>開催形式</h3>
+              <div className="date-chip-grid modal-format-grid">
+                {["すべて", "オンライン", "会場開催"].map((item) => (
+                  <button
+                    className={advancedFormat === item ? "is-selected" : ""}
+                    type="button"
+                    key={item}
+                    onClick={() => setAdvancedFormat(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <h3>並び替え</h3>
+              <div className="date-chip-grid modal-sort-grid">
+                {(["おすすめ", "申し込み期間", "残席順"] as SortOption[]).map(
+                  (item) => (
+                    <button
+                      className={advancedSort === item ? "is-selected" : ""}
+                      type="button"
+                      key={item}
+                      onClick={() => setAdvancedSort(item)}
+                    >
+                      {item}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+            <footer>
+              <button
+                type="button"
+                className="reset-filter-button"
+                onClick={resetAdvancedSearch}
+              >
+                リセット
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={applyAdvancedSearch}
+              >
+                {advancedResultCount}件のイベントを見る
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
       <section className="section-block" aria-labelledby="event-list-title">
         <div className="section-heading">
           <h2 id="event-list-title">おすすめイベント</h2>
