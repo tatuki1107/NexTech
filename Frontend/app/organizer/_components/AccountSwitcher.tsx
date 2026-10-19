@@ -48,7 +48,7 @@ export default function AccountSwitcher() {
   };
 
   return (
-    <div className="relative -mx-4 border-t border-white/10">
+    <div className="relative -mx-4 border-t border-ol-neutral-primary/20">
       <ul
         inert={!isOpen}
         aria-hidden={!isOpen}

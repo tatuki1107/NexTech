@@ -26,9 +26,9 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex min-h-screen w-65 flex-col bg-[#011B40] p-4 text-white">
+    <nav className="flex min-h-screen w-65 flex-col bg-bg-accent-darkblue p-4 text-fg-inverse-primary">
       <div className="flex items-center gap-2 mb-16 px-3 font-bold">
-        <div className="text-[36px] text-[#0051F5]">N</div>
+        <div className="text-[36px] text-fg-brand-primary">N</div>
         <div className="text-[24px]">NexTech</div>
       </div>
       <ul className="flex flex-1 flex-col items-center space-y-2">
@@ -41,7 +41,7 @@ export default function Sidebar() {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex items-center gap-4 rounded-xl w-50 h-14 px-4 py-6 text-xs ${
-                  isActive ? "bg-[#0051F5]" : "hover:bg-[#002A7F]"
+                  isActive ? "bg-fg-brand-primary" : "hover:bg-[#002A7F]"
                 }`}
               >
                 <Image src={item.iconSrc} alt="" width={24} height={24} />
