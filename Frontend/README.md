@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NexTech Frontend
 
-## Getting Started
+## 起動・検証
 
-First, run the development server:
+このディレクトリで次を実行します。Backendは別途起動してください。
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+画面は `http://localhost:3000`、現在の疎通確認APIは `http://localhost:3001/api` です。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ファイル配置
 
-## Learn More
+```text
+app/
+├── layout.tsx                 # 全画面共通のhtml/body
+├── globals.css                # Tailwindと全画面共通の基本設定のみ
+├── favicon.ico
+└── (participant)/             # 参加者向け画面。URLには含まれない
+    ├── layout.tsx             # 参加者用レイアウト
+    ├── layout.module.css      # 参加者だけに適用する色・背景
+    └── page.tsx               # URL: /
+```
 
-To learn more about Next.js, take a look at the following resources:
+主催者ブランチを取り込むと `app/organizer/` が追加され、URLは `/organizer` になります。
+主催者用レイアウトと部品はその配下の `layout.tsx`、`_components/` に置いてください。
+現段階では主催者用ファイルや仮画面を追加していません。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+参加者固有の部品は `app/(participant)/_components/`、両画面で実際に使う共通部品は
+`app/_components/` に置きます。これらのディレクトリは最初の部品が必要になった時点で作成します。
+画面固有のスタイルはCSS Modulesまたはその画面のTailwindクラスで管理し、
+`globals.css` に参加者用の背景・レイアウト・要素セレクターを追加しないでください。
+共通ヘッダーやサイドバーをルート `app/layout.tsx` に追加すると全画面へ適用されるため、
+利用者別のレイアウト配下へ追加してください。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 後続PRを取り込む際の注意
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+PR #4のDB・参加者画面は、今回の整理には含めていません。
+取り込む際は参加者ページ（`events`、`mypage`、`saved`など）を `(participant)` 配下へ、
+参加者専用部品を `_components` 配下へ配置し、importも更新してください。
+参加者用のCSSはCSS Modules等で参加者配下へ限定し、API Route Handlerは
+`app/api/` に置きます。URLは従来の `/events/...`、`/mypage`、`/api/...` を維持します。
