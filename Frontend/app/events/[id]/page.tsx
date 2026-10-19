@@ -4,6 +4,8 @@ import { EventImagePlaceholder, UserShell } from "../../components/user-shell";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import FmdGoodOutlinedIcon from "@mui/icons-material/FmdGoodOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import { notFound } from "next/navigation";
+import Link from "next/link";
 
 type EventDetail = {
   id: string;
@@ -21,21 +23,10 @@ type EventDetail = {
   seatsLeft: number;
 };
 
-const fallbackEvent: EventDetail = {
-  id: "react-uiux",
-  title: "React UI設計ワークショップ",
-  description: "実践を交えながら、初めての方にも分かりやすく学べるイベントです。参加者同士で交流しながら、新しい知識とつながりを作りましょう。",
-  format: "online",
-  venueName: null,
-  startAt: "2026-06-15T13:00:00+09:00",
-  endAt: "2026-06-15T16:00:00+09:00",
-  applicationDeadline: "2026-06-13T23:59:00+09:00",
-  capacity: 40,
-  categoryName: "テクノロジー",
-  organizerName: "NexTech Community",
-  applicationCount: 32,
-  seatsLeft: 8,
-};
+type EventDetailResult =
+  | { status: "found"; event: EventDetail }
+  | { status: "not-found" }
+  | { status: "unavailable" };
 
 function isEventDetail(value: unknown): value is EventDetail {
   return typeof value === "object" && value !== null
@@ -73,22 +64,43 @@ function formatDeadline(deadline: string | null) {
   return { label: `${dateLabel} ${timeLabel}`, remaining: `（残り${remainingDays}日）`, remainingDays };
 }
 
-async function getEventDetail(id: string) {
+async function getEventDetail(id: string): Promise<EventDetailResult> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return { status: "not-found" };
+  }
   const apiBaseUrl = process.env.INTERNAL_API_BASE_URL ?? "http://localhost:3001";
   try {
-    const response = await fetch(`${apiBaseUrl}/api/events/${encodeURIComponent(id)}`, { cache: "no-store" });
-    if (!response.ok) return fallbackEvent;
+    const response = await fetch(`${apiBaseUrl}/api/events/${encodeURIComponent(id)}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (response.status === 404) return { status: "not-found" };
+    if (!response.ok) return { status: "unavailable" };
     const value: unknown = await response.json();
-    return typeof value === "object" && value !== null && "event" in value && isEventDetail(value.event) ? value.event : fallbackEvent;
+    return typeof value === "object" && value !== null && "event" in value && isEventDetail(value.event)
+      ? { status: "found", event: value.event }
+      : { status: "unavailable" };
   } catch {
-    return fallbackEvent;
+    return { status: "unavailable" };
   }
 }
 
-export default async function EventDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ state?: string }> }) {
+export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { state = "申込可能" } = await searchParams;
-  const event = await getEventDetail(id);
+  const result = await getEventDetail(id);
+  if (result.status === "not-found") notFound();
+  if (result.status === "unavailable") {
+    return (
+      <UserShell showBack>
+        <section role="alert" className="empty-state">
+          <h1>イベント情報を取得できませんでした</h1>
+          <p>時間をおいて、再度お試しください。</p>
+          <Link href={`/events/${encodeURIComponent(id)}`} className="detail-button">再読み込み</Link>
+        </section>
+      </UserShell>
+    );
+  }
+  const event = result.event;
   const deadline = formatDeadline(event.applicationDeadline);
   const applicationRate = Math.min(100, Math.round((event.applicationCount / event.capacity) * 100));
   const isLowSeats = event.seatsLeft <= 3;
@@ -121,7 +133,7 @@ export default async function EventDetailPage({ params, searchParams }: { params
                 <FmdGoodOutlinedIcon />
                 <span>会場</span>
               </dt>
-              <dl>{event.format === "online" ? "オンライン" : event.venueName ?? "会場未定"}</dl></div>
+              <dd>{event.format === "online" ? "オンライン" : event.venueName ?? "会場未定"}</dd></div>
               <div>
                 <dt><PersonOutlinedIcon />
                     <span>定員</span>
@@ -133,7 +145,7 @@ export default async function EventDetailPage({ params, searchParams }: { params
           <section className="description-block"><h2>イベント内容</h2><p>{event.description}</p></section>
         </div>
       </article>
-      <EventAction state={state} event={{ id: event.id, title: event.title, date: formatEventDate(event.startAt, event.endAt), location: event.format === "online" ? "オンライン" : event.venueName ?? "会場未定", organizerName: event.organizerName }} />
+      <EventAction />
     </UserShell>
   );
 }

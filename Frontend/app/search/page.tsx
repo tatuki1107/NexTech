@@ -62,7 +62,7 @@ export default function SearchPage() {
   const resultHref = query.size > 0 ? `/?${query.toString()}` : "/";
   useEffect(() => {
     const controller = new AbortController();
-    fetch("http://localhost:3001/api/events", { signal: controller.signal })
+    fetch("/api/events", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("イベント一覧を取得できませんでした。");
         const value: unknown = await response.json();

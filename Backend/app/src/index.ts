@@ -24,7 +24,7 @@ const app = new Elysia()
         organizers.name as "organizerName",
         greatest(
           events.capacity - count(registrations.id) filter (
-            where registrations.status in ('pending', 'confirmed')
+            where registrations.status in ('pending', 'confirmed', 'checked_in', 'no_show')
           ),
           0
         )::integer as "seatsLeft"
@@ -54,11 +54,11 @@ const app = new Elysia()
         categories.name as "categoryName",
         organizers.name as "organizerName",
         count(registrations.id) filter (
-          where registrations.status in ('pending', 'confirmed')
+          where registrations.status in ('pending', 'confirmed', 'checked_in', 'no_show')
         )::integer as "applicationCount",
         greatest(
           events.capacity - count(registrations.id) filter (
-            where registrations.status in ('pending', 'confirmed')
+            where registrations.status in ('pending', 'confirmed', 'checked_in', 'no_show')
           ),
           0
         )::integer as "seatsLeft"
