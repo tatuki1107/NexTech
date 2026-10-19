@@ -10,10 +10,11 @@ bun run db:migrate
 bun run dev
 ```
 
-既存の0000〜0004と履歴を維持し、0005で認証セッション、0006でイベント保存・
-通知設定・通知の3テーブルを追加します。
+既存の0000〜0006と履歴を維持し、0007で参加条件と履歴のイベント・ユーザーIDを
+追加・バックフィルし、二重エンコード済みJSON履歴を補正します。0008で管理者公開停止フラグを追加します。
 既存テーブルの作り直しやDBボリューム削除は不要です。
 `bun run db:seed` は開発用データの投入です。本番DBでは実行しないでください。
+Seedには `SEED_ADMIN_EMAIL`・`SEED_ADMIN_PASSWORD`・`SEED_USER_PASSWORD` の指定が必要です。
 
 ## エンドポイント
 
@@ -54,11 +55,13 @@ bun run openapi:lint
 
 ```bash
 # Unix系シェルの例。PowerShellでは $env:変数名 に設定してください。
-RUN_DB_TESTS=1 TEST_DATABASE_URL=postgresql://user:password@localhost:5432/nextech_test bun test
+RUN_DB_TESTS=1 TEST_DATABASE_URL=postgresql://user:password@localhost:55432/nextech_test bun test
 ```
 
 登録・認証、権限制御、申込・繰り上げ・再申込、受付、更新のロールバック、
 非公開イベント、Refresh Tokenのローテーションを検証します。
+並列申込・同一ユーザーの同時申込、全保護操作の未認証拒否、実レスポンスのOpenAPI契約、
+主催者公開・管理者停止と復帰、管理操作履歴、月別人数・申込率・期間比較も検証します。
 `DB_PREPARE=false` はprepared statement非対応の検証用接続向けで、通常は設定不要です。
 
 ## 画面接続向けの追加API
@@ -105,3 +108,33 @@ bun run notifications:remind
 メール・Web Push・外部配信サービスへの送信は含まず、アプリ内通知のみです。
 
 FrontendのlocalStorage保存からの移行・実際のAPI接続は別作業です。
+
+## 要件定義書に対応した追加API
+
+全54操作を [OpenAPI](openapi/index.yaml) に定義しています。
+
+| API | 用途 |
+| --- | --- |
+| `PATCH /events/:eventId/status` | 所属主催者の公開・下書き・中止・完了 |
+| `GET /events/:eventId/history` | 所属主催者・管理者による変更履歴取得 |
+| `GET /me/related-events` | 過去参加イベントとタグ・主催者が関連する後継イベント |
+| `GET /admin/events/:eventId` | 下書き・非公開を含む管理者詳細 |
+| `GET /admin/organizers`・`GET /admin/organizers/:organizerId` | 主催者検索・詳細 |
+| `PATCH /admin/organizers/:organizerId/status` | 主催者の停止・復帰（理由必須） |
+| `GET /admin/registrations`・`GET /admin/registrations/:registrationId` | 参加情報検索・詳細・履歴 |
+| `POST /admin/reviews`・`GET /admin/moderation-actions` | 確認済み操作・管理履歴 |
+| `GET /admin/analytics/popular-organizers` | 人気主催者ランキング |
+| `GET /admin/analytics/report` | カテゴリ・主催者・開催形式別集計と直前同日数の期間比較 |
+
+イベント検索は `organizerName`、参加者検索は `keyword` の申込ID部分一致を受け付けます。
+管理対象一覧は `keyword/from/to/status/page/perPage` で検索します。
+イベントは開催日、主催者は登録日、参加情報は申込日を期間条件に使います。
+月別開催数は参加人数・受付人数・申込数・定員・申込率を含み、0件の月も返します。
+集計期間はAsia/Tokyoの暦日で両端を含み、公開中・開催終了済みイベントを対象にします。
+`registrationCount` は待機を含むキャンセル以外の申込、`participantCount` は参加枠使用人数、
+`applicationRate` は参加枠使用人数÷定員×100です。
+
+管理者の状態変更は理由必須です。管理者が下書きへ戻したイベントの再公開は管理者のみ可能です。
+中止・完了は終端状態で、完了操作は開催終了後のみ可能です。
+主催者の停止はイベントを物理削除せず、公開参照と新規申込を停止します。
+既存申込のキャンセルと権限のある履歴確認は引き続き可能です。

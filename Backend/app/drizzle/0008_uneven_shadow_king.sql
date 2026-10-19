@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "moderation_blocked" boolean DEFAULT false NOT NULL;

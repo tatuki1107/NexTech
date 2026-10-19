@@ -136,6 +136,7 @@ import {
         title: varchar("title", { length: 200 }).notNull(),
         summary: varchar("summary", { length: 500 }),
         description: text("description").notNull(),
+        participationRequirements: text("participation_requirements"),
         format: varchar("format", { length: 32 }).notNull(),
         venueName: varchar("venue_name", { length: 200 }),
         address: text("address"),
@@ -156,6 +157,7 @@ import {
         .notNull()
         .default("public"),
         publishedAt: timestamp("published_at", { withTimezone: true }),
+        moderationBlocked: boolean("moderation_blocked").notNull().default(false),
         createdAt: timestamp("created_at", { withTimezone: true })
         .notNull()
         .defaultNow(),
@@ -327,6 +329,8 @@ import {
             registrationId: uuid("registration_id")
             .notNull()
             .references(() => registrations.id, { onDelete: "restrict" }),
+            eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "restrict" }),
+            userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
             fromStatus: varchar("from_status", { length: 32 }),
             toStatus: varchar("to_status", { length: 32 }).notNull(),
             changedByUserId: uuid("changed_by_user_id").references(() => users.id, {

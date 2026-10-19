@@ -3,8 +3,21 @@ import { sqlClient } from "../db";
 import { getCurrentUser, toPublicUser } from "../lib/auth";
 import { notFound } from "../lib/errors";
 import { pagination, UUID_PATTERN } from "../lib/validation";
+import { EVENT_SELECT_SQL } from "../services/events";
+import { listSql } from "../lib/query";
 
 export const meRoutes = new Elysia({ prefix: "/me" })
+  .get("/related-events", async ({ headers, query }) => {
+    const user = (await getCurrentUser(headers.authorization))!;
+    const from = `FROM events e JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
+      WHERE e.status='published' AND e.visibility='public' AND o.status='active' AND e.start_at>now()
+      AND NOT EXISTS(SELECT 1 FROM registrations mine WHERE mine.event_id=e.id AND mine.user_id=$1 AND mine.status<>'cancelled')
+      AND EXISTS(SELECT 1 FROM registrations past JOIN events source ON source.id=past.event_id
+        WHERE past.user_id=$1 AND past.status IN ('confirmed','checked_in','no_show') AND source.end_at<now()
+        AND (source.organizer_id=e.organizer_id OR EXISTS(SELECT 1 FROM event_tags old_tag JOIN event_tags new_tag ON new_tag.tag_id=old_tag.tag_id WHERE old_tag.event_id=source.id AND new_tag.event_id=e.id)))`;
+    const result = await listSql(`${EVENT_SELECT_SQL},NULL::text AS "registrationStatus"`, from, [user.id], query, "e.start_at,e.id");
+    return { ...result, data: result.data.map((row: Record<string, unknown>) => { const { onlineUrl: _url, description: _description, ...item } = row; return item; }) };
+  }, { query: t.Object({ page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()) }) })
   .get("", async ({ headers }) => ({ data: toPublicUser((await getCurrentUser(headers.authorization))!) }))
   .patch("", async ({ headers, body }) => {
     const user = (await getCurrentUser(headers.authorization))!;
@@ -45,7 +58,8 @@ export const meRoutes = new Elysia({ prefix: "/me" })
       count(*) OVER()::int AS total FROM registrations r JOIN events e ON e.id=r.event_id
       JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
       WHERE r.user_id=$1 ${clause} ORDER BY e.start_at DESC LIMIT $2 OFFSET $3`, [user.id, perPage, offset]);
-    const total = Number(rows[0]?.total ?? 0);
+    const [count] = await sqlClient.unsafe(`SELECT count(*)::int AS total FROM registrations r JOIN events e ON e.id=r.event_id WHERE r.user_id=$1 ${clause}`, [user.id]);
+    const total = Number(count.total);
     return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
   }, { query: t.Object({
     view: t.Optional(t.Union([t.Literal("upcoming"),t.Literal("past"),t.Literal("waitlisted"),t.Literal("cancelled")])),

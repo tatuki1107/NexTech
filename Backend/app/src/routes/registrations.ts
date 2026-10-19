@@ -13,6 +13,7 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
     const result = await sqlClient.begin(async (tx) => {
       const [event] = await tx`SELECT * FROM events WHERE id=${params.eventId} FOR UPDATE`;
       if (!event) throw notFound("イベントが見つかりません");
+      if (!(await tx`SELECT 1 FROM organizers WHERE id=${event.organizer_id} AND status='active'`).length) throw notFound("イベントが見つかりません");
       if (event.visibility === "private" && !user.roles.includes("admin") && event.created_by !== user.id && !(await tx`SELECT 1 FROM organizer_members WHERE organizer_id=${event.organizer_id} AND user_id=${user.id}`).length && !(await tx`SELECT 1 FROM organizers WHERE id=${event.organizer_id} AND owner_user_id=${user.id}`).length) {
         throw notFound("イベントが見つかりません");
       }
@@ -46,8 +47,8 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
         (event_id,user_id,status,waitlist_position,confirmed_at)
         VALUES (${params.eventId},${user.id},${status},${waitlistPosition},${status === "confirmed" ? new Date().toISOString() : null}) RETURNING id`;
       await tx`INSERT INTO registration_status_histories
-        (registration_id,from_status,to_status,changed_by_user_id,reason)
-        VALUES (${registration.id},${existing ? 'cancelled' : null},${status},${user.id},${body?.note ?? "application"})`;
+        (registration_id,event_id,user_id,from_status,to_status,changed_by_user_id,reason)
+        VALUES (${registration.id},${params.eventId},${user.id},${existing ? 'cancelled' : null},${status},${user.id},${body?.note ?? "application"})`;
       await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id)
         VALUES (${user.id},'registration.apply','registration',${registration.id})`;
       await notifyRegistration(tx, { userId: user.id, eventId: params.eventId,
@@ -66,7 +67,7 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
   .delete("/registration", async ({ params, headers }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     const registration = await sqlClient.begin(async (tx) => {
-      await tx`SELECT id FROM events WHERE id=${params.eventId} FOR UPDATE`;
+      const [event] = await tx`SELECT id,status,start_at FROM events WHERE id=${params.eventId} FOR UPDATE`;
       const [current] = await tx`SELECT * FROM registrations
         WHERE event_id=${params.eventId} AND user_id=${user.id} AND status<>'cancelled' FOR UPDATE`;
       if (!current) throw notFound("有効な申込が見つかりません");
@@ -79,25 +80,27 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
         RETURNING id,event_id AS "eventId",user_id AS "userId",status,waitlist_position AS "waitlistPosition",
           applied_at AS "appliedAt",confirmed_at AS "confirmedAt",cancelled_at AS "cancelledAt",checked_in_at AS "checkedInAt"`;
       await tx`INSERT INTO registration_status_histories
-        (registration_id,from_status,to_status,changed_by_user_id,reason)
-        VALUES (${current.id},${previousStatus},'cancelled',${user.id},'user_cancelled')`;
+        (registration_id,event_id,user_id,from_status,to_status,changed_by_user_id,reason)
+        VALUES (${current.id},${params.eventId},${user.id},${previousStatus},'cancelled',${user.id},'user_cancelled')`;
       await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id)
         VALUES (${user.id},'registration.cancel','registration',${current.id})`;
       await notifyRegistration(tx, { userId: user.id, eventId: params.eventId,
         title: "申込みをキャンセルしました", message: "参加申込みのキャンセルを受け付けました。" });
-      if (previousStatus === "confirmed" || previousStatus === "pending") {
+      if ((previousStatus === "confirmed" || previousStatus === "pending") && event?.status === "published" && new Date(event.start_at as string) > new Date()) {
         const [next] = await tx`SELECT * FROM registrations WHERE event_id=${params.eventId} AND status='waitlisted'
           ORDER BY waitlist_position,applied_at FOR UPDATE SKIP LOCKED LIMIT 1`;
         if (next) {
           await tx`UPDATE registrations SET status='confirmed',waitlist_position=NULL,confirmed_at=now(),updated_at=now(),version=version+1 WHERE id=${next.id}`;
           await tx`INSERT INTO registration_status_histories
-            (registration_id,from_status,to_status,reason)
-            VALUES (${next.id},'waitlisted','confirmed','automatic_promotion')`;
+            (registration_id,event_id,user_id,from_status,to_status,reason)
+            VALUES (${next.id},${params.eventId},${next.user_id},'waitlisted','confirmed','automatic_promotion')`;
           await notifyRegistration(tx, { userId: String(next.user_id), eventId: params.eventId,
             title: "キャンセル待ちから参加確定になりました", message: "空き枠ができたため参加が確定しました。" });
         }
       }
+      const waiting = await tx`SELECT id FROM registrations WHERE event_id=${params.eventId} AND status='waitlisted' ORDER BY waitlist_position,applied_at FOR UPDATE`;
+      for (const [index, entry] of waiting.entries()) await tx`UPDATE registrations SET waitlist_position=${index + 1} WHERE id=${entry.id}`;
       return cancelled;
     });
-    return { data: registration };
+    return { data: { ...registration, message: "参加申込をキャンセルしました" } };
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }) });

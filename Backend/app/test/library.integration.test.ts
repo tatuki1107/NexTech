@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createApp } from "../src/app";
 import { sqlClient } from "../src/db";
+import { assertContract } from "./contract";
 import {
   generateEventReminders,
   notifyRegistration,
@@ -44,6 +45,7 @@ async function call<T = Record<string, unknown>>(
           pagination: { total: number };
           unreadCount: number;
         });
+  assertContract(`/api/v1${path}`, method, response, payload);
   return { response, payload, data: payload?.data as T };
 }
 
@@ -538,13 +540,13 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
         await call(
           `/admin/events/${eventId}/status`,
           "PATCH",
-          { status: "draft" },
+          { status: "draft", reason: "Integration review" },
           owner.accessToken,
         );
         await call(
           `/admin/events/${eventId}/status`,
           "PATCH",
-          { status: "published" },
+          { status: "published", reason: "Integration publication" },
           owner.accessToken,
         );
       }
@@ -573,7 +575,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       await call(
         `/admin/events/${eventId}/status`,
         "PATCH",
-        { status: "published" },
+        { status: "published", reason: "Integration publication" },
         owner.accessToken,
       );
       expect(
@@ -593,7 +595,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
         const result = await call(
           `/admin/events/${eventId}/status`,
           "PATCH",
-          { status: "cancelled" },
+          { status: "cancelled", reason: "Integration cancellation" },
           owner.accessToken,
         );
         expect(result.response.status).toBe(200);

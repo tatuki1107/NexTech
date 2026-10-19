@@ -9,6 +9,9 @@ npm ci
 npm run dev
 ```
 
+ファイル監視上限による `EMFILE` が出る環境では、
+`WATCHPACK_POLLING=true npm run dev` でポーリング監視を使用してください。
+
 画面は `http://localhost:3000` です。DB・Backendの起動と環境変数の設定は
 [Contributing Guide](../CONTRIBUTING.md#3-ローカルでの起動) を参照してください。
 ブラウザは同一オリジンの `/api/events` に接続し、Next.jsがBackendへ転送します。

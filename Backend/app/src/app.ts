@@ -12,11 +12,15 @@ import { docsRoutes } from "./routes/docs";
 import { legacyRoutes } from "./routes/legacy";
 import { meLibraryRoutes } from "./routes/me-library";
 import { notificationRoutes } from "./routes/notifications";
+import { managementRoutes } from "./routes/management";
+import { analyticsRoutes } from "./routes/analytics";
+import { UUID_PATTERN } from "./lib/validation";
 
 export const createApp = () => new Elysia()
   .use(cors({ origin: env.ALLOWED_ORIGINS, credentials: true }))
   .onRequest(({ request, set }) => {
-    set.headers["x-request-id"] = request.headers.get("x-request-id") ?? crypto.randomUUID();
+    const incomingId = request.headers.get("x-request-id");
+    set.headers["x-request-id"] = incomingId && new RegExp(UUID_PATTERN).test(incomingId) ? incomingId : crypto.randomUUID();
   })
   .onError(({ error, code, set }) => {
     if (error instanceof ApiError) {
@@ -37,7 +41,7 @@ export const createApp = () => new Elysia()
       return { error: { code: databaseCode === "23505" ? "CONFLICT" : "BUSINESS_RULE_ERROR", message: "入力内容またはデータの状態を確認してください" } };
     }
     const requestId = set.headers["x-request-id"];
-    console.error(JSON.stringify({ level: "error", event: "request_failed", requestId, error: error instanceof Error ? error.message : "unknown" }));
+    console.error(JSON.stringify({ level: "error", event: "request_failed", requestId }));
     set.status = 500;
     return { error: { code: "INTERNAL_ERROR", message: "サーバーエラーが発生しました" } };
   })
@@ -53,6 +57,8 @@ export const createApp = () => new Elysia()
     .use(registrationRoutes)
     .use(organizerRoutes)
     .use(organizerOperationsRoutes)
-    .use(adminRoutes));
+    .use(adminRoutes)
+    .use(managementRoutes)
+    .use(analyticsRoutes));
 
 export type App = ReturnType<typeof createApp>;

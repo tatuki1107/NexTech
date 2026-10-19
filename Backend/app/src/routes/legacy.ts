@@ -30,7 +30,7 @@ export const legacyRoutes = new Elysia()
       inner join categories on categories.id = events.category_id
       inner join organizers on organizers.id = events.organizer_id
       left join registrations on registrations.event_id = events.id
-      where events.status = 'published' and events.visibility = 'public'
+      where events.status = 'published' and events.visibility = 'public' and organizers.status = 'active'
       group by events.id, categories.name, organizers.name
       order by events.start_at asc
     `);
@@ -67,6 +67,7 @@ export const legacyRoutes = new Elysia()
       where events.id = ${params.id}
         and events.status = 'published'
         and events.visibility = 'public'
+        and organizers.status = 'active'
       group by events.id, categories.name, organizers.name
     `);
 

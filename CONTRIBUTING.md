@@ -85,7 +85,8 @@ docker compose up -d --build --wait frontend
 
 BackendはPostgreSQLのhealthcheck成功後、FrontendはBackendのDB接続確認成功後に起動します。
 初回はFrontendを開く前にマイグレーションを適用してください。
-DBのホスト公開は `127.0.0.1:5432` のみです。
+DBのホスト公開は既定で `127.0.0.1:55432` のみです。変更する場合は
+ルート `.env` の `POSTGRES_PORT` を設定してください。
 
 ### 画面・コンポーネントの配置
 

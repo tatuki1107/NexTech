@@ -3,12 +3,15 @@ import { sqlClient } from "../db";
 import { getCurrentUser } from "../lib/auth";
 import { ApiError, notFound } from "../lib/errors";
 import { pagination, SLUG_PATTERN, UUID_PATTERN, assertEventTimes } from "../lib/validation";
-import { requireEventAccess, requireOrganizerAccess } from "../services/access";
+import { requireActiveOrganizer, requireEventAccess, requireOrganizerAccess } from "../services/access";
+import { changeEventStatus, eventStatusSchema } from "../services/event-status";
 import { EVENT_SELECT_SQL, getEventById } from "../services/events";
 
 const eventFields = {
   title: t.String({ minLength: 1, maxLength: 160 }), summary: t.Optional(t.String({ maxLength: 300 })),
   description: t.String({ minLength: 1 }), categoryId: t.String({ pattern: UUID_PATTERN }),
+  participationRequirements: t.Optional(t.Nullable(t.String({ maxLength: 3000 }))),
+  visibility: t.Optional(t.Union([t.Literal("public"), t.Literal("private"), t.Literal("unlisted")])),
   tagIds: t.Optional(t.Array(t.String({ pattern: UUID_PATTERN }), { maxItems: 30 })),
   format: t.Union([t.Literal("online"),t.Literal("offline"),t.Literal("hybrid")]),
   venueName: t.Optional(t.String({ maxLength: 160 })), address: t.Optional(t.String({ maxLength: 1000 })),
@@ -26,6 +29,7 @@ export const organizerRoutes = new Elysia()
         RETURNING id,name,slug,description,website_url AS "websiteUrl",contact_email AS "contactEmail",status`;
       await tx`INSERT INTO organizer_members (organizer_id,user_id,member_role) VALUES (${organizer.id},${user.id},'owner')`;
       await tx`INSERT INTO user_roles (user_id,role_code) VALUES (${user.id},'organizer') ON CONFLICT DO NOTHING`;
+      await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id) VALUES (${user.id},'organizer.create','organizer',${organizer.id})`;
       return organizer;
     });
     set.status = 201;
@@ -48,6 +52,7 @@ export const organizerRoutes = new Elysia()
       contact_email=CASE WHEN ${body.contactEmail !== undefined} THEN ${body.contactEmail ?? null} ELSE contact_email END,
       updated_at=now() WHERE id=${params.organizerId}
       RETURNING id,name,slug,description,website_url AS "websiteUrl",contact_email AS "contactEmail",status`;
+    await sqlClient`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id) VALUES (${user.id},'organizer.update','organizer',${params.organizerId})`;
     return { data: updated };
   }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }), body: t.Object({
     name: t.Optional(t.String({ minLength: 1, maxLength: 100 })), slug: t.Optional(t.String({ pattern: SLUG_PATTERN, maxLength: 100 })),
@@ -63,7 +68,8 @@ export const organizerRoutes = new Elysia()
       WHERE e.organizer_id=$1 ${query.status ? "AND e.status=$2" : ""} ORDER BY e.start_at DESC
       LIMIT $${query.status ? 3 : 2} OFFSET $${query.status ? 4 : 3}`,
       query.status ? [params.organizerId, query.status, perPage, offset] : [params.organizerId, perPage, offset]);
-    const total = Number(rows[0]?.total ?? 0);
+    const [count] = await sqlClient`SELECT count(*)::int AS total FROM events WHERE organizer_id=${params.organizerId} AND (${query.status ?? null}::text IS NULL OR status=${query.status ?? null})`;
+    const total = Number(count.total);
     return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
   }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }), query: t.Object({
     status: t.Optional(t.Union([t.Literal("draft"),t.Literal("published"),t.Literal("cancelled"),t.Literal("completed")])),
@@ -73,6 +79,7 @@ export const organizerRoutes = new Elysia()
     const user = (await getCurrentUser(headers.authorization))!;
     await requireOrganizerAccess(user, params.organizerId);
     assertEventTimes(body.startAt, body.endAt, body.applicationDeadline);
+    await requireActiveOrganizer(params.organizerId);
     const eventId = await sqlClient.begin(async (tx) => {
       const [event] = await tx`INSERT INTO events
         (organizer_id,category_id,created_by,title,summary,description,format,venue_name,address,online_url,
@@ -81,15 +88,18 @@ export const organizerRoutes = new Elysia()
           ${body.format},${body.venueName ?? null},${body.address ?? null},${body.onlineUrl ?? null},'Asia/Tokyo',${body.startAt},${body.endAt},
           ${body.capacity},${body.waitlistEnabled},${body.applicationStartAt ?? null},${body.applicationDeadline}) RETURNING id`;
       for (const tagId of body.tagIds ?? []) await tx`INSERT INTO event_tags (event_id,tag_id) VALUES (${event.id},${tagId}) ON CONFLICT DO NOTHING`;
-      await tx`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,after_data) VALUES (${event.id},${user.id},'created',${JSON.stringify(body)}::jsonb)`;
+      await tx`UPDATE events SET participation_requirements=${body.participationRequirements ?? null},visibility=${body.visibility ?? 'public'} WHERE id=${event.id}`;
+      await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id) VALUES (${user.id},'event.create','event',${event.id})`;
+      await tx`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,after_data) VALUES (${event.id},${user.id},'created',${body}::jsonb)`;
       return event.id as string;
     });
     set.status = 201;
-    return { data: await getEventById(eventId, user, true) };
+    return { data: { ...await getEventById(eventId, user, true), message: "イベントを下書きとして作成しました" } };
   }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }), body: t.Object(eventFields) })
   .patch("/events/:eventId", async ({ headers, params, body }) => {
     const user = (await getCurrentUser(headers.authorization))!;
-    await requireEventAccess(user, params.eventId);
+    const access = await requireEventAccess(user, params.eventId);
+    await requireActiveOrganizer(access.organizerId);
     await sqlClient.begin(async (tx) => {
     const [current] = await tx`SELECT * FROM events WHERE id=${params.eventId} FOR UPDATE`;
     if (!current) throw notFound("イベントが見つかりません");
@@ -106,6 +116,8 @@ export const organizerRoutes = new Elysia()
       title:"title",summary:"summary",description:"description",categoryId:"category_id",format:"format",venueName:"venue_name",
       address:"address",onlineUrl:"online_url",startAt:"start_at",endAt:"end_at",capacity:"capacity",waitlistEnabled:"waitlist_enabled",
       applicationStartAt:"application_start_at",applicationDeadline:"application_deadline",
+      participationRequirements:"participation_requirements",
+      visibility:"visibility",
     };
     const entries = Object.entries(body).filter(([key, value]) => key in mapping && value !== undefined);
     const values: unknown[] = [];
@@ -117,12 +129,20 @@ export const organizerRoutes = new Elysia()
       for (const tagId of body.tagIds ?? []) await tx`INSERT INTO event_tags(event_id,tag_id) VALUES (${params.eventId},${tagId})`;
     }
     await tx`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,before_data,after_data)
-      VALUES (${params.eventId},${user.id},'updated',${JSON.stringify(current)}::jsonb,${JSON.stringify(body)}::jsonb)`;
+      VALUES (${params.eventId},${user.id},'updated',${current}::jsonb,${body}::jsonb)`;
+    await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id) VALUES (${user.id},'event.update','event',${params.eventId})`;
     });
-    return { data: await getEventById(params.eventId, user, true) };
+    return { data: { ...await getEventById(params.eventId, user, true), message: "イベントを更新しました" } };
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }), body: t.Partial(t.Object(eventFields)) });
 
 export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId" })
+  .patch("/status", async ({ headers, params, body }) => {
+    const user = (await getCurrentUser(headers.authorization))!;
+    const access = await requireEventAccess(user, params.eventId);
+    await requireActiveOrganizer(access.organizerId);
+    await changeEventStatus(params.eventId, user, body.status, body.reason, false);
+    return { data: await getEventById(params.eventId, user, true) };
+  }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }), body: t.Object({ status: eventStatusSchema, reason: t.Optional(t.String({ maxLength: 1000 })) }) })
   .get("/registrations", async ({ headers, params, query }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     await requireEventAccess(user, params.eventId);
@@ -130,7 +150,8 @@ export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId"
     const values: Array<string | number> = [params.eventId];
     const clauses = ["r.event_id=$1"];
     if (query.status) { values.push(query.status); clauses.push(`r.status=$${values.length}`); }
-    if (query.keyword) { values.push(`%${query.keyword}%`); clauses.push(`(u.display_name ILIKE $${values.length} OR u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length})`); }
+    if (query.keyword) { values.push(`%${query.keyword}%`); clauses.push(`(u.display_name ILIKE $${values.length} OR u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length} OR r.id::text ILIKE $${values.length})`); }
+    const [count] = await sqlClient.unsafe(`SELECT count(*)::int AS total FROM registrations r JOIN users u ON u.id=r.user_id WHERE ${clauses.join(" AND ")}`, values);
     values.push(perPage, offset);
     const rows = await sqlClient.unsafe(`SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
       r.waitlist_position AS "waitlistPosition",r.applied_at AS "appliedAt",r.confirmed_at AS "confirmedAt",
@@ -138,7 +159,7 @@ export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId"
       jsonb_build_object('id',u.id,'email',u.email,'displayName',u.display_name,'fullName',u.full_name,'roles','[]'::jsonb,'status',u.status) AS user,
       count(*) OVER()::int AS total FROM registrations r JOIN users u ON u.id=r.user_id
       WHERE ${clauses.join(" AND ")} ORDER BY r.applied_at LIMIT $${values.length-1} OFFSET $${values.length}`, values);
-    const total = Number(rows[0]?.total ?? 0);
+    const total = Number(count.total);
     return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }), query: t.Object({
     status: t.Optional(t.Union([t.Literal("pending"),t.Literal("confirmed"),t.Literal("waitlisted"),t.Literal("cancelled"),t.Literal("checked_in"),t.Literal("no_show")])),
@@ -168,12 +189,12 @@ export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId"
         RETURNING id,event_id AS "eventId",user_id AS "userId",status,waitlist_position AS "waitlistPosition",
           applied_at AS "appliedAt",confirmed_at AS "confirmedAt",cancelled_at AS "cancelledAt",checked_in_at AS "checkedInAt"`;
       await tx`INSERT INTO registration_status_histories
-        (registration_id,from_status,to_status,changed_by_user_id,reason)
-        VALUES (${registration.id},'confirmed','checked_in',${user.id},'check_in')`;
+        (registration_id,event_id,user_id,from_status,to_status,changed_by_user_id,reason)
+        VALUES (${registration.id},${params.eventId},${registration.user_id},'confirmed','checked_in',${user.id},'check_in')`;
       await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id)
         VALUES (${user.id},'registration.check_in','registration',${registration.id})`;
       return updated;
     });
-    return { data: result };
+    return { data: { ...result, message: "受付処理が完了しました" } };
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }), registrationId: t.String({ pattern: UUID_PATTERN }) }),
     body: t.Optional(t.Object({ note: t.Optional(t.String({ maxLength: 255 })) })) });

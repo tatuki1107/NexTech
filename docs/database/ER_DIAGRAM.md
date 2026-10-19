@@ -35,6 +35,11 @@ erDiagram
   users ||--o{ event_change_logs : changed_by
   users ||--o{ moderation_actions : actor
   users o|--o{ operation_logs : actor
+  users ||--o{ user_saved_events : saves
+  events ||--o{ user_saved_events : saved
+  users ||--o| user_notification_settings : configures
+  users ||--o{ user_notifications : receives
+  events o|--o{ user_notifications : relates_to
 
   users {
     uuid id PK
@@ -106,6 +111,7 @@ erDiagram
     varchar summary
     text description
     varchar format
+    text participation_requirements
     varchar venue_name
     text address
     text online_url
@@ -119,6 +125,7 @@ erDiagram
     varchar status
     varchar visibility
     timestamptz published_at
+    boolean moderation_blocked
     timestamptz created_at
     timestamptz updated_at
     int version
@@ -213,6 +220,32 @@ erDiagram
     timestamptz last_used_at
     text user_agent
     inet ip_address
+    timestamptz created_at
+  }
+
+  user_saved_events {
+    uuid user_id PK,FK
+    uuid event_id PK,FK
+    timestamptz created_at
+  }
+
+  user_notification_settings {
+    uuid user_id PK,FK
+    boolean registration_updates
+    boolean event_reminders
+    boolean recommendations
+    timestamptz updated_at
+  }
+
+  user_notifications {
+    uuid id PK
+    uuid user_id FK
+    uuid event_id FK
+    varchar kind
+    varchar title
+    text message
+    text dedupe_key
+    timestamptz read_at
     timestamptz created_at
   }
 

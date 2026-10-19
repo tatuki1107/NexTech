@@ -51,7 +51,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     const rows = await sqlClient`SELECT u.id,u.email,u.password_hash AS "passwordHash",u.display_name AS "displayName",
       u.full_name AS "fullName",u.profile_text AS "profileText",u.avatar_url AS "avatarUrl",u.status,
       COALESCE(array_agg(ur.role_code) FILTER (WHERE ur.role_code IS NOT NULL),'{}') AS roles
-      FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE lower(u.email)=${email} GROUP BY u.id`;
+      FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE lower(u.email)=${email} AND u.deleted_at IS NULL GROUP BY u.id`;
     const user = rows[0] as (CurrentUser & { passwordHash: string }) | undefined;
     if (!user || user.status !== "active" || !(await Bun.password.verify(body.password, user.passwordHash))) {
       throw new ApiError(401, "AUTH_REQUIRED", "メールアドレスまたはパスワードが正しくありません");

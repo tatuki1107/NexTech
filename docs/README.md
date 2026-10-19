@@ -4,6 +4,7 @@
 
 - [要求定義書](requirements/要求定義書.md)
 - [要件定義書](requirements/要件定義書.md)
+- [API要件対応表](requirements/API_IMPLEMENTATION.md)
 
 ## API・データベース
 

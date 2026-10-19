@@ -83,7 +83,7 @@ export const getCurrentUser = async (authorization?: string | null, optional = f
     SELECT u.id,u.email,u.display_name AS "displayName",u.full_name AS "fullName",
       u.profile_text AS "profileText",u.avatar_url AS "avatarUrl",u.status,
       COALESCE(array_agg(ur.role_code) FILTER (WHERE ur.role_code IS NOT NULL),'{}') AS roles
-    FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.id=${claims.sub}
+    FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.id=${claims.sub} AND u.deleted_at IS NULL
     GROUP BY u.id`;
   const user = rows[0] as CurrentUser | undefined;
   if (!user || user.status !== "active") throw authRequired("アカウントを利用できません");
@@ -134,7 +134,7 @@ export const rotateRefreshSession = async (
     const rows = await tx`SELECT u.id,u.email,u.display_name AS "displayName",u.full_name AS "fullName",
       u.profile_text AS "profileText",u.avatar_url AS "avatarUrl",u.status,
       COALESCE(array_agg(ur.role_code) FILTER (WHERE ur.role_code IS NOT NULL),'{}') AS roles
-      FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.id=${current.user_id} GROUP BY u.id`;
+      FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.id=${current.user_id} AND u.deleted_at IS NULL GROUP BY u.id`;
     const user = rows[0] as CurrentUser | undefined;
     if (!user || user.status !== "active") throw authRequired("アカウントを利用できません");
     return { reused: false as const, token: newToken, accessToken: await createAccessToken(user.id), user };

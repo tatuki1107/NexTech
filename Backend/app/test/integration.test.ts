@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { createApp } from "../src/app";
 import { sqlClient } from "../src/db";
+import { assertContract } from "./contract";
 
 const app = createApp();
 const password = "integration-test-password";
@@ -15,6 +16,7 @@ async function call<T = Record<string, unknown>>(path: string, method = "GET", b
     body: body === undefined ? undefined : JSON.stringify(body),
   }));
   const payload = response.status === 204 ? null : await response.json() as { data: T; error?: { code: string } };
+  assertContract(path, method, response, payload);
   return { response, payload, data: payload?.data as T };
 }
 
@@ -43,7 +45,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")("API integration against migra
     }, owner.accessToken);
     expect(createdEvent.response.status).toBe(201);
     eventId = createdEvent.data.id;
-    expect((await call(`/api/v1/admin/events/${eventId}/status`, "PATCH", { status: "published" }, owner.accessToken)).response.status).toBe(200);
+    expect((await call(`/api/v1/admin/events/${eventId}/status`, "PATCH", { status: "published", reason: "Integration publication" }, owner.accessToken)).response.status).toBe(200);
     await sqlClient`DELETE FROM user_roles WHERE user_id=${owner.user.id} AND role_code='admin'`;
   });
 

@@ -6,6 +6,8 @@ test("health endpoint responds without database access", async () => {
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ status: "ok" });
   expect(response.headers.get("x-request-id")).toBeTruthy();
+  const unsafeId = await createApp().handle(new Request("http://localhost/health", { headers: { "x-request-id": "private@example.test" } }));
+  expect(unsafeId.headers.get("x-request-id")).not.toBe("private@example.test");
 });
 
 test("validation errors use the common envelope", async () => {

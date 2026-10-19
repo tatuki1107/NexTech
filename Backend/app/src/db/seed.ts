@@ -4,9 +4,10 @@ if ((process.env.NODE_ENV ?? "development") === "production") {
   throw new Error("Seed is disabled in production");
 }
 
-const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
-const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "development-admin-password";
-const userPassword = process.env.SEED_USER_PASSWORD ?? "development-user-password";
+const adminEmail = process.env.SEED_ADMIN_EMAIL;
+const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+const userPassword = process.env.SEED_USER_PASSWORD;
+if (!adminEmail || !adminPassword || !userPassword) throw new Error("Set SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD and SEED_USER_PASSWORD before running seed");
 const adminHash = await Bun.password.hash(adminPassword, "argon2id");
 const userHash = await Bun.password.hash(userPassword, "argon2id");
 

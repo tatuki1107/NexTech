@@ -20,3 +20,9 @@ export const requireEventAccess = async (user: CurrentUser, eventId: string): Pr
   await requireOrganizerAccess(user, event.organizerId);
   return event;
 };
+
+export const requireActiveOrganizer = async (organizerId: string): Promise<void> => {
+  const [organizer] = await sqlClient`SELECT status FROM organizers WHERE id=${organizerId}`;
+  if (!organizer) throw notFound("主催者が見つかりません");
+  if (organizer.status !== "active") throw forbidden("停止中の主催者はイベントを操作できません");
+};
