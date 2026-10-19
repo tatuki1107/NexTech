@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import AccountSwitcher from "./AccountSwitcher";
+
 type MenuItem = {
   label: string;
   href: string;
@@ -24,12 +26,12 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="min-h-screen w-65 bg-[#011B40] p-4 text-white">
+    <nav className="flex min-h-screen w-65 flex-col bg-[#011B40] p-4 text-white">
       <div className="flex items-center gap-2 mb-16 px-3 font-bold">
         <div className="text-[36px] text-[#0051F5]">N</div>
         <div className="text-[24px]">NexTech</div>
       </div>
-      <ul className="flex flex-col items-center space-y-2">
+      <ul className="flex flex-1 flex-col items-center space-y-2">
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
 
@@ -49,6 +51,7 @@ export default function Sidebar() {
           );
         })}
       </ul>
+      <AccountSwitcher />
     </nav>
   );
 }
