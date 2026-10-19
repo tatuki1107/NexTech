@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788713625443,
+      "tag": "0000_oval_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788715985221,
+      "tag": "0001_nasty_vin_gonzales",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788769612606,
+      "tag": "0002_tricky_emma_frost",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789054247952,
+      "tag": "0003_quick_dormammu",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791197629844,
+      "tag": "0004_gorgeous_avengers",
+      "breakpoints": true
+    }
+  ]
+}
