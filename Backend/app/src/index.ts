@@ -19,6 +19,7 @@ const app = new Elysia()
         events.venue_name as "venueName",
         events.start_at as "startAt",
         events.end_at as "endAt",
+        events.application_deadline as "applicationDeadline",
         events.capacity,
         categories.name as "categoryName",
         organizers.name as "organizerName",
