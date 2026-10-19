@@ -16,7 +16,7 @@ for (const [path, pathItem] of Object.entries(paths)) {
     if (!responses) throw new Error(`${method.toUpperCase()} ${path} has no responses`);
   }
 }
-if (operations !== 30) throw new Error(`Expected 30 operations, found ${operations}`);
+if (operations !== 41) throw new Error(`Expected 41 operations, found ${operations}`);
 
 const serialized = JSON.stringify(specification);
 for (const match of serialized.matchAll(/#\/components\/(schemas|responses|parameters)\/([^"}]+)/g)) {

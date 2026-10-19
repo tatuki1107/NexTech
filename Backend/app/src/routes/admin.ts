@@ -4,6 +4,7 @@ import { getCurrentUser, requireRole } from "../lib/auth";
 import { ApiError, notFound } from "../lib/errors";
 import { pagination, UUID_PATTERN } from "../lib/validation";
 import { EVENT_SELECT_SQL, getEventById } from "../services/events";
+import { notifyPublishedEvent, notifyRegistration } from "../services/notifications";
 
 const eventStatuses = ["draft", "published", "cancelled", "completed"] as const;
 
@@ -35,6 +36,14 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
         VALUES (${user.id},'event',${params.eventId},${body.status},${body.reason ?? null},${JSON.stringify({ fromStatus: current.status })}::jsonb)`;
       await tx`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,before_data,after_data)
         VALUES (${params.eventId},${user.id},'status_changed',${JSON.stringify({ status: current.status })}::jsonb,${JSON.stringify({ status: body.status, reason: body.reason })}::jsonb)`;
+      if (body.status === "published" && current.status !== "published") await notifyPublishedEvent(tx, params.eventId);
+      if (body.status === "cancelled" && current.status !== "cancelled") {
+        const registrations = await tx`SELECT user_id FROM registrations WHERE event_id=${params.eventId} AND status<>'cancelled'`;
+        for (const registration of registrations) await notifyRegistration(tx, {
+          userId: String(registration.user_id), eventId: params.eventId,
+          title: "イベントが中止されました", message: String(current.title),
+        });
+      }
     });
     void result;
     return { data: await getEventById(params.eventId, user, true) };

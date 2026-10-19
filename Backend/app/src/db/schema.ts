@@ -485,3 +485,36 @@ export const authSessions = pgTable("auth_sessions", {
   ipAddress: inet("ip_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("auth_sessions_family_idx").on(table.familyId)]);
+
+export const userSavedEvents = pgTable("user_saved_events", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.eventId] }),
+  index("user_saved_events_event_idx").on(table.eventId),
+]);
+
+export const userNotificationSettings = pgTable("user_notification_settings", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  registrationUpdates: boolean("registration_updates").notNull().default(true),
+  eventReminders: boolean("event_reminders").notNull().default(true),
+  recommendations: boolean("recommendations").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userNotifications = pgTable("user_notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("user_notifications_dedupe_idx").on(table.userId, table.dedupeKey),
+  index("user_notifications_user_created_idx").on(table.userId, table.createdAt),
+  check("user_notifications_kind_valid", sql`${table.kind} in ('registration', 'reminder', 'recommendation')`),
+]);

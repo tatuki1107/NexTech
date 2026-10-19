@@ -9,7 +9,8 @@
     "start": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "db:seed": "bun run src/db/seed.ts",
-    "openapi:lint": "bun run scripts/lint-openapi.ts"
+    "openapi:lint": "bun run scripts/lint-openapi.ts",
+    "notifications:remind": "bun run scripts/generate-reminders.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.2",

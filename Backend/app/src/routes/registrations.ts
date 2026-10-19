@@ -4,6 +4,7 @@ import { getCurrentUser } from "../lib/auth";
 import { ApiError, notFound } from "../lib/errors";
 import { assertRateLimit } from "../lib/rate-limit";
 import { UUID_PATTERN } from "../lib/validation";
+import { notifyRegistration } from "../services/notifications";
 
 export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
   .post("/registrations", async ({ params, headers, body, set }) => {
@@ -49,6 +50,8 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
         VALUES (${registration.id},${existing ? 'cancelled' : null},${status},${user.id},${body?.note ?? "application"})`;
       await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id)
         VALUES (${user.id},'registration.apply','registration',${registration.id})`;
+      await notifyRegistration(tx, { userId: user.id, eventId: params.eventId,
+        title: status === "confirmed" ? "申込み完了しました" : "キャンセル待ちへ登録しました", message: String(event.title) });
       return {
         registrationId: registration.id, eventId: params.eventId, status, waitlistPosition,
         message: status === "confirmed" ? "参加申込が確定しました" : "キャンセル待ちへ登録しました",
@@ -80,6 +83,8 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
         VALUES (${current.id},${previousStatus},'cancelled',${user.id},'user_cancelled')`;
       await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id)
         VALUES (${user.id},'registration.cancel','registration',${current.id})`;
+      await notifyRegistration(tx, { userId: user.id, eventId: params.eventId,
+        title: "申込みをキャンセルしました", message: "参加申込みのキャンセルを受け付けました。" });
       if (previousStatus === "confirmed" || previousStatus === "pending") {
         const [next] = await tx`SELECT * FROM registrations WHERE event_id=${params.eventId} AND status='waitlisted'
           ORDER BY waitlist_position,applied_at FOR UPDATE SKIP LOCKED LIMIT 1`;
@@ -88,6 +93,8 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
           await tx`INSERT INTO registration_status_histories
             (registration_id,from_status,to_status,reason)
             VALUES (${next.id},'waitlisted','confirmed','automatic_promotion')`;
+          await notifyRegistration(tx, { userId: String(next.user_id), eventId: params.eventId,
+            title: "キャンセル待ちから参加確定になりました", message: "空き枠ができたため参加が確定しました。" });
         }
       }
       return cancelled;

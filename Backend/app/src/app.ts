@@ -10,6 +10,8 @@ import { organizerOperationsRoutes, organizerRoutes } from "./routes/organizers"
 import { adminRoutes } from "./routes/admin";
 import { docsRoutes } from "./routes/docs";
 import { legacyRoutes } from "./routes/legacy";
+import { meLibraryRoutes } from "./routes/me-library";
+import { notificationRoutes } from "./routes/notifications";
 
 export const createApp = () => new Elysia()
   .use(cors({ origin: env.ALLOWED_ORIGINS, credentials: true }))
@@ -45,6 +47,8 @@ export const createApp = () => new Elysia()
   .group("/api/v1", (api) => api
     .use(authRoutes)
     .use(meRoutes)
+    .use(meLibraryRoutes)
+    .use(notificationRoutes)
     .use(publicRoutes)
     .use(registrationRoutes)
     .use(organizerRoutes)
