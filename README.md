@@ -5,6 +5,13 @@
 - [Contributing Guide](CONTRIBUTING.md)
 - [Coding Rules](docs/CODING_RULES.md)
 
+## 開発環境
+
+ルートの `.env.example` を `.env` にコピーし、ローカル用DBの設定を確認してください。
+Dockerで一式起動する手順、Bunで個別に起動する手順、既存DBボリュームの注意点は
+[Contributing Guide](CONTRIBUTING.md#3-ローカルでの起動) に記載しています。
+参加者画面・主催者画面・コンポーネントの配置は [Frontend README](Frontend/README.md) を参照してください。
+
 ## 参加者画面のAPI接続
 
 ブラウザは同一オリジンの `/api/events` に接続し、Next.jsサーバーがBackendへ転送します。

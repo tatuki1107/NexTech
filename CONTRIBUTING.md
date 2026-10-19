@@ -33,7 +33,25 @@ docs/update-coding-rules
 
 ## 3. ローカルでの起動
 
-リポジトリの `work/NexTech` ディレクトリを基準にしています。
+リポジトリのルートディレクトリを基準にしています。BunとDocker Composeを使用します。
+
+### PostgreSQLの準備
+
+ルートの `.env.example` を `.env` へ、`Backend/app/.env.example` を
+`Backend/app/.env` へコピーしてください。コピーはエディタやファイルマネージャーでも構いません。
+
+```bash
+cp .env.example .env
+cp Backend/app/.env.example Backend/app/.env
+docker compose up -d --wait db
+```
+
+Backendの `DATABASE_URL` はルート `.env` のDB名・ユーザー名・パスワードと揃えます。
+サンプルの認証情報はローカル開発専用です。本番では別の値を使用してください。
+接続URL内のパスワードに予約文字がある場合はURLエンコードが必要です。
+
+既存のDBボリュームを使用する場合は、初期化時の認証情報を `.env` に設定します。
+環境変数を書き換えるだけでは、既存DBのパスワードは変更されません。
 
 ### Frontend
 
@@ -48,11 +66,35 @@ bun run dev
 ```bash
 cd Backend/app
 bun install
+bun run db:migrate
 bun run dev
 ```
 
 Frontendは通常 `http://localhost:3000`、Backendは
 `http://localhost:3001` で起動します。
+
+### すべてDockerで起動する場合
+
+ルート `.env` を準備したうえで、ルートから次を実行します。
+
+```bash
+docker compose up -d --build --wait db backend
+docker compose exec -T backend bun run db:migrate
+docker compose up -d --build --wait frontend
+```
+
+BackendはPostgreSQLのhealthcheck成功後、FrontendはBackendのDB接続確認成功後に起動します。
+初回はFrontendを開く前にマイグレーションを適用してください。
+DBのホスト公開は `127.0.0.1:5432` のみです。
+
+### 画面・コンポーネントの配置
+
+参加者画面は `Frontend/app/(participant)/`、参加者専用部品はその下の
+`_components/` に配置します。コンポーネント名とファイル名を対応させ、
+`ParticipantShell.tsx`、`EventCard.tsx` のように役割が分かる名前にしてください。
+主催者画面は `Frontend/app/organizer/`、API Route Handlerは `Frontend/app/api/` に配置します。
+参加者専用CSSはCSS Modulesで参加者配下に限定し、ルートの `globals.css` は共通設定だけにします。
+詳細は [Frontend README](Frontend/README.md) を参照してください。
 
 ## 4. コミット
 

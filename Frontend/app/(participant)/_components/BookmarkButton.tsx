@@ -13,13 +13,22 @@ export function readBookmarkedEventIds(): string[] {
 
   try {
     const parsedValue: unknown = JSON.parse(storedValue);
-    return Array.isArray(parsedValue) && parsedValue.every((value) => typeof value === "string") ? parsedValue : [];
+    return Array.isArray(parsedValue) &&
+      parsedValue.every((value) => typeof value === "string")
+      ? parsedValue
+      : [];
   } catch {
     return [];
   }
 }
 
-export function BookmarkButton({ eventId, title }: { eventId: string; title: string }) {
+export function BookmarkButton({
+  eventId,
+  title,
+}: {
+  eventId: string;
+  title: string;
+}) {
   const isBookmarked = useSyncExternalStore(
     (callback) => {
       window.addEventListener(BOOKMARK_EVENT_NAME, callback);
@@ -35,9 +44,22 @@ export function BookmarkButton({ eventId, title }: { eventId: string; title: str
       ? bookmarkIds.filter((id) => id !== eventId)
       : [...bookmarkIds, eventId];
 
-    window.localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify(nextBookmarkIds));
+    window.localStorage.setItem(
+      BOOKMARK_STORAGE_KEY,
+      JSON.stringify(nextBookmarkIds),
+    );
     window.dispatchEvent(new Event(BOOKMARK_EVENT_NAME));
   };
 
-  return <button className={`bookmark-button ${isBookmarked ? "is-bookmarked" : ""}`} type="button" onClick={handleBookmarkToggle} aria-pressed={isBookmarked} aria-label={`${title}を${isBookmarked ? "保存から外す" : "保存"}`}>{isBookmarked ? <BookmarkIcon /> : <BookmarkBorderOutlinedIcon />}</button>;
+  return (
+    <button
+      className={`bookmark-button ${isBookmarked ? "is-bookmarked" : ""}`}
+      type="button"
+      onClick={handleBookmarkToggle}
+      aria-pressed={isBookmarked}
+      aria-label={`${title}を${isBookmarked ? "保存から外す" : "保存"}`}
+    >
+      {isBookmarked ? <BookmarkIcon /> : <BookmarkBorderOutlinedIcon />}
+    </button>
+  );
 }
