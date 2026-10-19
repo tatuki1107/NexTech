@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+@theme {
+  /* 文字・アイコン (fg) */
+  --color-fg-neutral-primary: #363d59;
+  --color-fg-neutral-secondary: #7b7d83;
+  --color-fg-brand-primary: #0051f5;
+  --color-fg-accent-green: #297859;
+  --color-fg-accent-purple: #4404d4;
+  --color-fg-accent-yellow: #8d662d;
+  --color-fg-accent-pink: #c16793;
+  --color-fg-warning-primary: #cc3a44;
+  --color-fg-inverse-primary: #ffffff;
+
+  /* 背景 (bg) */
+  --color-bg-neutral-primary: #f0f0f4;
+  --color-bg-accent-blue: #d8e8f8;
+  --color-bg-accent-green: #cfeedf;
+  --color-bg-accent-purple: #eae1fe;
+  --color-bg-accent-yellow: #f9f2df;
+  --color-bg-accent-pink: #f8eaf7;
+  --color-bg-accent-darkblue: #011b40;
+
+  /* 枠線 (ol) */
+  --color-ol-neutral-primary: #e3e4e8;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
