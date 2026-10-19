@@ -38,7 +38,7 @@ export default function Sidebar() {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex items-center gap-4 rounded w-50 h-14 px-4 py-6 text-xs ${
+                className={`flex items-center gap-4 rounded-xl w-50 h-14 px-4 py-6 text-xs ${
                   isActive ? "bg-[#0051F5]" : "hover:bg-[#002A7F]"
                 }`}
               >
