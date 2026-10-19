@@ -12,9 +12,9 @@ export const pagination = (pageValue?: string | number, perPageValue?: string | 
   return { page, perPage, offset: (page - 1) * perPage };
 };
 
-export const assertEventTimes = (startAt: string, endAt: string, deadline: string): void => {
-  const start = new Date(startAt); const end = new Date(endAt); const close = new Date(deadline);
-  if ([start, end, close].some((date) => Number.isNaN(date.getTime())) || start >= end || close > start) {
+export const assertEventTimes = (startAt: string, endAt: string, deadline: string | null): void => {
+  const start = new Date(startAt); const end = new Date(endAt); const close = deadline ? new Date(deadline) : null;
+  if ([start, end, ...(close ? [close] : [])].some((date) => Number.isNaN(date.getTime())) || start >= end || (close && close > start)) {
     throw new ApiError(422, "BUSINESS_RULE_ERROR", "開催日時または申込期限が不正です");
   }
 };

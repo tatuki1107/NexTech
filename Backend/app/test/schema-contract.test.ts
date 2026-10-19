@@ -23,6 +23,14 @@ const document = Bun.YAML.parse(
   await Bun.file(new URL("../openapi/index.yaml", import.meta.url)).text(),
 ) as OpenApiDocument;
 
+test("OpenAPI statuses match the existing dev database", () => {
+  const schemas = document.components.schemas;
+  expect(schemas.EventStatus.enum).toEqual(["draft", "published", "cancelled", "completed"]);
+  expect(schemas.RegistrationStatus.enum).toContain("pending");
+  expect(schemas.RegistrationStatus.enum).toContain("checked_in");
+  expect(schemas.RegistrationStatus.enum).not.toContain("attended");
+});
+
 const resolveSchema = (schema: Schema): Schema => {
   if (!schema.$ref) return schema;
   const parts = schema.$ref.split("/");

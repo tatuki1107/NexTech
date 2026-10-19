@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: NexTech API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     エンジニア向け勉強会・イベントマッチングサービス「NexTech」のMVP向けAPI仕様。
     イベント検索、参加申込、キャンセル待ち、主催者運営、管理者集計を対象とする。
@@ -24,6 +24,223 @@ tags:
   - name: Admin
     description: 管理者機能
 paths:
+  /me/saved-events:
+    get:
+      tags:
+        - Me
+      summary: 保存したイベント一覧
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum:
+              - upcoming
+              - past
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedEventsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  "/me/saved-events/{eventId}":
+    put:
+      tags:
+        - Me
+      summary: イベントを保存
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "204":
+          description: 成功（再実行可能）
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+      description: 公開済み・アクセス可能なイベントのみ保存可能。重複保存は204。保存自体は非公開イベントの閲覧権限を付与しない。
+    delete:
+      tags:
+        - Me
+      summary: 保存を解除
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "204":
+          description: 成功（再実行可能）
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  /me/favorite-categories:
+    get:
+      tags:
+        - Me
+      summary: フォロー中のカテゴリ一覧
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteCategoriesResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  /me/favorite-organizers:
+    get:
+      tags:
+        - Me
+      summary: フォロー中の主催者一覧
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteOrganizersResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  /me/organizers:
+    get:
+      tags:
+        - Me
+      summary: 自分が所有または所属する主催者一覧
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyOrganizersResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  /me/notification-settings:
+    get:
+      tags:
+        - Me
+      summary: 通知設定取得
+      description: 未保存時は申込通知・リマインドON、おすすめOFF。アプリ内通知に適用する。
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/NotificationSettings"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+    patch:
+      tags:
+        - Me
+      summary: 通知設定を部分更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSettingsUpdate"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/NotificationSettings"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  /me/notifications:
+    get:
+      tags:
+        - Me
+      summary: 自分の通知一覧
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  /me/notifications/read-all:
+    put:
+      tags:
+        - Me
+      summary: 自分の通知をすべて既読にする
+      parameters: []
+      responses:
+        "204":
+          description: 成功（再実行可能）
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+  "/me/notifications/{notificationId}/read":
+    put:
+      tags:
+        - Me
+      summary: 自分の通知を既読にする
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: 成功（再実行可能）
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
   /auth/signup:
     post:
       tags:
@@ -883,7 +1100,7 @@ components:
         email:
           type: string
           format: email
-          maxLength: 255
+          maxLength: 254
         password:
           type: string
           minLength: 8
@@ -894,7 +1111,7 @@ components:
           maxLength: 80
         fullName:
           type: string
-          maxLength: 120
+          maxLength: 100
     LoginRequest:
       type: object
       required:
@@ -938,7 +1155,7 @@ components:
           maxLength: 80
         fullName:
           type: string
-          maxLength: 120
+          maxLength: 100
           nullable: true
         profileText:
           type: string
@@ -990,10 +1207,10 @@ components:
         name:
           type: string
           minLength: 1
-          maxLength: 120
+          maxLength: 100
         slug:
           type: string
-          maxLength: 120
+          maxLength: 100
           pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
         description:
           type: string
@@ -1011,10 +1228,10 @@ components:
         name:
           type: string
           minLength: 1
-          maxLength: 120
+          maxLength: 100
         slug:
           type: string
-          maxLength: 120
+          maxLength: 100
           pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
         description:
           type: string
@@ -1067,9 +1284,8 @@ components:
       enum:
         - draft
         - published
-        - suspended
         - cancelled
-        - closed
+        - completed
     EventListItem:
       type: object
       required:
@@ -1205,7 +1421,7 @@ components:
           format: date-time
         capacity:
           type: integer
-          minimum: 0
+          minimum: 1
         waitlistEnabled:
           type: boolean
         applicationStartAt:
@@ -1257,7 +1473,7 @@ components:
           format: date-time
         capacity:
           type: integer
-          minimum: 0
+          minimum: 1
         waitlistEnabled:
           type: boolean
         applicationStartAt:
@@ -1269,10 +1485,11 @@ components:
     RegistrationStatus:
       type: string
       enum:
+        - pending
         - confirmed
         - waitlisted
         - cancelled
-        - attended
+        - checked_in
         - no_show
     Registration:
       type: object
@@ -1453,3 +1670,220 @@ components:
                     type: string
                   message:
                     type: string
+
+    SavedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventListItem"
+        - type: object
+          required:
+            - savedAt
+          properties:
+            savedAt:
+              type: string
+              format: date-time
+    SavedEventsResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedEvent"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    FavoriteCategory:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - status
+        - followedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        status:
+          type: string
+        followedAt:
+          type: string
+          format: date-time
+    FavoriteCategoriesResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FavoriteCategory"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    FavoriteOrganizer:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - description
+        - websiteUrl
+        - status
+        - followedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        websiteUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+        followedAt:
+          type: string
+          format: date-time
+    FavoriteOrganizersResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/FavoriteOrganizer"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    MyOrganizer:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - description
+        - status
+        - memberRole
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+        memberRole:
+          type: string
+          enum:
+            - owner
+            - admin
+            - member
+    MyOrganizersResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyOrganizer"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    NotificationSettings:
+      type: object
+      required:
+        - registrationUpdates
+        - eventReminders
+        - recommendations
+      properties:
+        registrationUpdates:
+          type: boolean
+          default: true
+        eventReminders:
+          type: boolean
+          default: true
+        recommendations:
+          type: boolean
+          default: false
+    NotificationSettingsUpdate:
+      type: object
+      required: []
+      properties:
+        registrationUpdates:
+          type: boolean
+          default: true
+        eventReminders:
+          type: boolean
+          default: true
+        recommendations:
+          type: boolean
+          default: false
+    Notification:
+      type: object
+      required:
+        - id
+        - eventId
+        - kind
+        - title
+        - message
+        - readAt
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+          nullable: true
+        kind:
+          type: string
+          enum:
+            - registration
+            - reminder
+            - recommendation
+        title:
+          type: string
+        message:
+          type: string
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    NotificationsResponse:
+      type: object
+      required:
+        - data
+        - pagination
+        - unreadCount
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        unreadCount:
+          type: integer
+          minimum: 0

@@ -10,7 +10,7 @@ test("OpenAPI defines every MVP operation and refresh", async () => {
   const operationCount = Object.values(specification.paths)
     .flatMap((item) => Object.keys(item))
     .filter((method) => methods.has(method)).length;
-  expect(operationCount).toBe(30);
+  expect(operationCount).toBe(41);
   expect(specification.paths["/auth/refresh"]?.post).toBeDefined();
   expect(specification.servers.some(({ url }) => url === "http://localhost:3001/api/v1")).toBeTrue();
 

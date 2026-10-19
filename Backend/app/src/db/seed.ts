@@ -12,13 +12,13 @@ const userHash = await Bun.password.hash(userPassword, "argon2id");
 
 await sqlClient.begin(async (tx) => {
   const [admin] = await tx`INSERT INTO users (email,password_hash,display_name)
-    VALUES (${adminEmail},${adminHash},'NexTech Admin') ON CONFLICT (email)
+    VALUES (${adminEmail},${adminHash},'NexTech Admin') ON CONFLICT (lower(email))
     DO UPDATE SET display_name=EXCLUDED.display_name RETURNING id`;
   const [organizerUser] = await tx`INSERT INTO users (email,password_hash,display_name)
-    VALUES ('organizer@example.com',${userHash},'Sample Organizer') ON CONFLICT (email)
+    VALUES ('organizer@example.com',${userHash},'Sample Organizer') ON CONFLICT (lower(email))
     DO UPDATE SET display_name=EXCLUDED.display_name RETURNING id`;
   const [participant] = await tx`INSERT INTO users (email,password_hash,display_name)
-    VALUES ('participant@example.com',${userHash},'Sample Participant') ON CONFLICT (email)
+    VALUES ('participant@example.com',${userHash},'Sample Participant') ON CONFLICT (lower(email))
     DO UPDATE SET display_name=EXCLUDED.display_name RETURNING id`;
   await tx`INSERT INTO user_roles (user_id,role_code) VALUES
     (${admin.id},'participant'),(${admin.id},'admin'),(${organizerUser.id},'participant'),
@@ -43,10 +43,10 @@ await sqlClient.begin(async (tx) => {
   const [category] = await tx`SELECT id FROM categories WHERE slug='web-development'`;
   await tx`INSERT INTO events (
     organizer_id,category_id,created_by,title,summary,description,format,venue_name,address,
-    start_at,end_at,capacity,waitlist_enabled,application_deadline,status,published_at
+    online_url,timezone,start_at,end_at,capacity,waitlist_enabled,application_deadline,status,published_at
   ) SELECT ${organizer.id},${category.id},${organizerUser.id},'Bun + Elysia Workshop',
     'BunでAPIを構築するハンズオン','NexTechのサンプルイベントです。','hybrid','NexTech Hall','Tokyo',
-    now()+interval '30 days',now()+interval '30 days 2 hours',30,true,now()+interval '29 days','published',now()
+    'https://example.test/meeting','Asia/Tokyo',now()+interval '30 days',now()+interval '30 days 2 hours',30,true,now()+interval '29 days','published',now()
     WHERE NOT EXISTS (SELECT 1 FROM events WHERE title='Bun + Elysia Workshop')`;
 });
 

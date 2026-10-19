@@ -8,6 +8,7 @@ export const sqlClient = new SQL({
   max: Number(process.env.DB_POOL_SIZE ?? 10),
   idleTimeout: 30,
   connectionTimeout: 10,
+  prepare: process.env.DB_PREPARE !== "false",
 });
 
 export const db = drizzle({ client: sqlClient, schema });

@@ -18,7 +18,7 @@ export const meRoutes = new Elysia({ prefix: "/me" })
         avatar_url AS "avatarUrl",status`;
     return { data: toPublicUser({ ...updated, roles: user.roles } as typeof user) };
   }, { body: t.Object({
-    displayName: t.Optional(t.String({ minLength: 1, maxLength: 80 })), fullName: t.Optional(t.Nullable(t.String({ maxLength: 120 }))),
+    displayName: t.Optional(t.String({ minLength: 1, maxLength: 80 })), fullName: t.Optional(t.Nullable(t.String({ maxLength: 100 }))),
     profileText: t.Optional(t.Nullable(t.String({ maxLength: 2000 }))), avatarUrl: t.Optional(t.Nullable(t.String({ format: "uri", maxLength: 2000 }))),
   }) })
   .get("/registrations", async ({ headers, query }) => {
@@ -39,7 +39,7 @@ export const meRoutes = new Elysia({ prefix: "/me" })
           'websiteUrl',o.website_url,'contactEmail',o.contact_email,'status',o.status),
         'tags',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name,'slug',t.slug) ORDER BY t.name)
           FROM event_tags et JOIN tags t ON t.id=et.tag_id WHERE et.event_id=e.id),'[]'::jsonb),
-        'confirmedCount',(SELECT count(*)::int FROM registrations rc WHERE rc.event_id=e.id AND rc.status IN ('confirmed','attended')),
+        'confirmedCount',(SELECT count(*)::int FROM registrations rc WHERE rc.event_id=e.id AND rc.status IN ('pending','confirmed','checked_in','no_show')),
         'waitlistCount',(SELECT count(*)::int FROM registrations rw WHERE rw.event_id=e.id AND rw.status='waitlisted'),
         'registrationStatus',CASE WHEN r.status='cancelled' THEN NULL ELSE r.status END) AS event,
       count(*) OVER()::int AS total FROM registrations r JOIN events e ON e.id=r.event_id

@@ -13,7 +13,7 @@ const eventFields = {
   format: t.Union([t.Literal("online"),t.Literal("offline"),t.Literal("hybrid")]),
   venueName: t.Optional(t.String({ maxLength: 160 })), address: t.Optional(t.String({ maxLength: 1000 })),
   onlineUrl: t.Optional(t.String({ format: "uri", maxLength: 2000 })), startAt: t.String({ format: "date-time" }),
-  endAt: t.String({ format: "date-time" }), capacity: t.Integer({ minimum: 0 }), waitlistEnabled: t.Boolean(),
+  endAt: t.String({ format: "date-time" }), capacity: t.Integer({ minimum: 1 }), waitlistEnabled: t.Boolean(),
   applicationStartAt: t.Optional(t.String({ format: "date-time" })), applicationDeadline: t.String({ format: "date-time" }),
 };
 export const organizerRoutes = new Elysia()
@@ -31,7 +31,7 @@ export const organizerRoutes = new Elysia()
     set.status = 201;
     return { data: result };
   }, { body: t.Object({
-    name: t.String({ minLength: 1, maxLength: 120 }), slug: t.String({ pattern: SLUG_PATTERN, maxLength: 120 }),
+    name: t.String({ minLength: 1, maxLength: 100 }), slug: t.String({ pattern: SLUG_PATTERN, maxLength: 100 }),
     description: t.Optional(t.String({ maxLength: 3000 })), websiteUrl: t.Optional(t.String({ format: "uri" })),
     contactEmail: t.Optional(t.String({ format: "email" })),
   }) })
@@ -50,7 +50,7 @@ export const organizerRoutes = new Elysia()
       RETURNING id,name,slug,description,website_url AS "websiteUrl",contact_email AS "contactEmail",status`;
     return { data: updated };
   }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }), body: t.Object({
-    name: t.Optional(t.String({ minLength: 1, maxLength: 120 })), slug: t.Optional(t.String({ pattern: SLUG_PATTERN, maxLength: 120 })),
+    name: t.Optional(t.String({ minLength: 1, maxLength: 100 })), slug: t.Optional(t.String({ pattern: SLUG_PATTERN, maxLength: 100 })),
     description: t.Optional(t.Nullable(t.String({ maxLength: 3000 }))), websiteUrl: t.Optional(t.Nullable(t.String({ format: "uri" }))),
     contactEmail: t.Optional(t.Nullable(t.String({ format: "email" }))),
   }) })
@@ -66,7 +66,7 @@ export const organizerRoutes = new Elysia()
     const total = Number(rows[0]?.total ?? 0);
     return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
   }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }), query: t.Object({
-    status: t.Optional(t.Union([t.Literal("draft"),t.Literal("published"),t.Literal("suspended"),t.Literal("cancelled"),t.Literal("closed")])),
+    status: t.Optional(t.Union([t.Literal("draft"),t.Literal("published"),t.Literal("cancelled"),t.Literal("completed")])),
     page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()),
   }) })
   .post("/organizers/:organizerId/events", async ({ headers, params, body, set }) => {
@@ -76,9 +76,9 @@ export const organizerRoutes = new Elysia()
     const eventId = await sqlClient.begin(async (tx) => {
       const [event] = await tx`INSERT INTO events
         (organizer_id,category_id,created_by,title,summary,description,format,venue_name,address,online_url,
-         start_at,end_at,capacity,waitlist_enabled,application_start_at,application_deadline)
+         timezone,start_at,end_at,capacity,waitlist_enabled,application_start_at,application_deadline)
         VALUES (${params.organizerId},${body.categoryId},${user.id},${body.title},${body.summary ?? null},${body.description},
-          ${body.format},${body.venueName ?? null},${body.address ?? null},${body.onlineUrl ?? null},${body.startAt},${body.endAt},
+          ${body.format},${body.venueName ?? null},${body.address ?? null},${body.onlineUrl ?? null},'Asia/Tokyo',${body.startAt},${body.endAt},
           ${body.capacity},${body.waitlistEnabled},${body.applicationStartAt ?? null},${body.applicationDeadline}) RETURNING id`;
       for (const tagId of body.tagIds ?? []) await tx`INSERT INTO event_tags (event_id,tag_id) VALUES (${event.id},${tagId}) ON CONFLICT DO NOTHING`;
       await tx`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,after_data) VALUES (${event.id},${user.id},'created',${JSON.stringify(body)}::jsonb)`;
@@ -90,15 +90,16 @@ export const organizerRoutes = new Elysia()
   .patch("/events/:eventId", async ({ headers, params, body }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     await requireEventAccess(user, params.eventId);
-    const [current] = await sqlClient`SELECT * FROM events WHERE id=${params.eventId}`;
+    await sqlClient.begin(async (tx) => {
+    const [current] = await tx`SELECT * FROM events WHERE id=${params.eventId} FOR UPDATE`;
     if (!current) throw notFound("イベントが見つかりません");
     const mergedStart = body.startAt ?? String(current.start_at);
     const mergedEnd = body.endAt ?? String(current.end_at);
-    const mergedDeadline = body.applicationDeadline ?? String(current.application_deadline);
+    const mergedDeadline = body.applicationDeadline ?? (current.application_deadline ? String(current.application_deadline) : null);
     assertEventTimes(mergedStart, mergedEnd, mergedDeadline);
     if (body.capacity !== undefined) {
-      const [{ count }] = await sqlClient`SELECT count(*)::int AS count FROM registrations
-        WHERE event_id=${params.eventId} AND status IN ('confirmed','attended')`;
+      const [{ count }] = await tx`SELECT count(*)::int AS count FROM registrations
+        WHERE event_id=${params.eventId} AND status IN ('pending','confirmed','checked_in','no_show')`;
       if (body.capacity < Number(count)) throw new ApiError(422, "BUSINESS_RULE_ERROR", "定員を参加確定数より少なくできません");
     }
     const mapping: Record<string, string> = {
@@ -106,19 +107,18 @@ export const organizerRoutes = new Elysia()
       address:"address",onlineUrl:"online_url",startAt:"start_at",endAt:"end_at",capacity:"capacity",waitlistEnabled:"waitlist_enabled",
       applicationStartAt:"application_start_at",applicationDeadline:"application_deadline",
     };
-    const entries = Object.entries(body).filter(([key, value]) => key !== "tagIds" && value !== undefined);
+    const entries = Object.entries(body).filter(([key, value]) => key in mapping && value !== undefined);
     const values: unknown[] = [];
     const sets = entries.map(([key, value]) => { values.push(value); return `${mapping[key]}=$${values.length}`; });
-    if (sets.length) {
       values.push(params.eventId);
-      await sqlClient.unsafe(`UPDATE events SET ${sets.join(",")},updated_at=now(),version=version+1 WHERE id=$${values.length}`, values);
-    }
-    if (body.tagIds) await sqlClient.begin(async (tx) => {
+      await tx.unsafe(`UPDATE events SET ${sets.length ? sets.join(",") + ',' : ''}updated_at=now(),version=version+1 WHERE id=$${values.length}`, values);
+    if (body.tagIds) {
       await tx`DELETE FROM event_tags WHERE event_id=${params.eventId}`;
       for (const tagId of body.tagIds ?? []) await tx`INSERT INTO event_tags(event_id,tag_id) VALUES (${params.eventId},${tagId})`;
-    });
-    await sqlClient`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,before_data,after_data)
+    }
+    await tx`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,before_data,after_data)
       VALUES (${params.eventId},${user.id},'updated',${JSON.stringify(current)}::jsonb,${JSON.stringify(body)}::jsonb)`;
+    });
     return { data: await getEventById(params.eventId, user, true) };
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }), body: t.Partial(t.Object(eventFields)) });
 
@@ -141,18 +141,18 @@ export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId"
     const total = Number(rows[0]?.total ?? 0);
     return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }), query: t.Object({
-    status: t.Optional(t.Union([t.Literal("confirmed"),t.Literal("waitlisted"),t.Literal("cancelled"),t.Literal("attended"),t.Literal("no_show")])),
+    status: t.Optional(t.Union([t.Literal("pending"),t.Literal("confirmed"),t.Literal("waitlisted"),t.Literal("cancelled"),t.Literal("checked_in"),t.Literal("no_show")])),
     keyword: t.Optional(t.String({ maxLength: 200 })), page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()),
   }) })
   .get("/recruitment-summary", async ({ headers, params }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     await requireEventAccess(user, params.eventId);
     const [summary] = await sqlClient`SELECT e.id AS "eventId",e.capacity,
-      count(r.id) FILTER(WHERE r.status IN ('confirmed','attended'))::int AS "confirmedCount",
+      count(r.id) FILTER(WHERE r.status IN ('pending','confirmed','checked_in','no_show'))::int AS "confirmedCount",
       count(r.id) FILTER(WHERE r.status='waitlisted')::int AS "waitlistCount",
       count(r.id) FILTER(WHERE r.status='cancelled')::int AS "cancelledCount",
-      count(r.id) FILTER(WHERE r.status='attended')::int AS "attendedCount",
-      GREATEST(e.capacity-count(r.id) FILTER(WHERE r.status IN ('confirmed','attended')),0)::int AS "availableSeats"
+      count(r.id) FILTER(WHERE r.status='checked_in')::int AS "attendedCount",
+      GREATEST(e.capacity-count(r.id) FILTER(WHERE r.status IN ('pending','confirmed','checked_in','no_show')),0)::int AS "availableSeats"
       FROM events e LEFT JOIN registrations r ON r.event_id=e.id WHERE e.id=${params.eventId} GROUP BY e.id`;
     return { data: summary };
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }) })
@@ -163,13 +163,13 @@ export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId"
       const [registration] = await tx`SELECT * FROM registrations WHERE id=${params.registrationId} AND event_id=${params.eventId} FOR UPDATE`;
       if (!registration) throw notFound("申込が見つかりません");
       if (registration.status !== "confirmed") throw new ApiError(422, "BUSINESS_RULE_ERROR", "参加確定済みの申込だけ受付できます");
-      const [updated] = await tx`UPDATE registrations SET status='attended',checked_in_at=now(),checkin_note=${body?.note ?? null},
+      const [updated] = await tx`UPDATE registrations SET status='checked_in',checked_in_at=now(),checkin_note=${body?.note ?? null},
         updated_at=now(),version=version+1 WHERE id=${params.registrationId}
         RETURNING id,event_id AS "eventId",user_id AS "userId",status,waitlist_position AS "waitlistPosition",
           applied_at AS "appliedAt",confirmed_at AS "confirmedAt",cancelled_at AS "cancelledAt",checked_in_at AS "checkedInAt"`;
       await tx`INSERT INTO registration_status_histories
-        (registration_id,event_id,user_id,from_status,to_status,changed_by_user_id,reason)
-        VALUES (${registration.id},${params.eventId},${registration.user_id},'confirmed','attended',${user.id},'check_in')`;
+        (registration_id,from_status,to_status,changed_by_user_id,reason)
+        VALUES (${registration.id},'confirmed','checked_in',${user.id},'check_in')`;
       await tx`INSERT INTO operation_logs (actor_user_id,action,resource_type,resource_id)
         VALUES (${user.id},'registration.check_in','registration',${registration.id})`;
       return updated;

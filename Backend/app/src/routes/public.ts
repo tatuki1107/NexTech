@@ -28,7 +28,7 @@ export const publicRoutes = new Elysia()
     if (query.format) add("e.format=?", query.format);
     if (query.hasCapacity !== undefined) {
       const comparison = query.hasCapacity ? "<" : ">=";
-      clauses.push(`(SELECT count(*) FROM registrations r WHERE r.event_id=e.id AND r.status IN ('confirmed','attended')) ${comparison} e.capacity`);
+      clauses.push(`(SELECT count(*) FROM registrations r WHERE r.event_id=e.id AND r.status IN ('pending','confirmed','checked_in','no_show')) ${comparison} e.capacity`);
     }
     if (query.tagIds) {
       const tagIds = query.tagIds.split(",").filter(Boolean);
@@ -48,7 +48,7 @@ export const publicRoutes = new Elysia()
     }), pagination: { page, perPage, total } };
   }, { query: t.Object({
     keyword: t.Optional(t.String({ maxLength: 200 })), startDate: t.Optional(t.String({ format: "date" })), endDate: t.Optional(t.String({ format: "date" })),
-    categoryId: t.Optional(t.String({ pattern: UUID_PATTERN })), tagIds: t.Optional(t.String()), organizerId: t.Optional(t.String({ pattern: UUID_PATTERN })),
+    categoryId: t.Optional(t.String({ pattern: UUID_PATTERN })), tagIds: t.Optional(t.String({ pattern: `^${UUID_PATTERN.slice(1, -1)}(?:,${UUID_PATTERN.slice(1, -1)})*$` })), organizerId: t.Optional(t.String({ pattern: UUID_PATTERN })),
     format: t.Optional(t.Union([t.Literal("online"),t.Literal("offline"),t.Literal("hybrid")])), hasCapacity: t.Optional(t.Boolean()),
     page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()),
   }) })

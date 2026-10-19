@@ -1,193 +1,476 @@
 import {
-  boolean,
-  index,
-  inet,
-  integer,
-  jsonb,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+    sql
+    } from "drizzle-orm";
 
-const timestamps = {
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-};
+import {
+    boolean,
+    index,
+    integer,
+    pgTable,
+    text,
+    timestamp,
+    uniqueIndex,
+    uuid,
+    varchar,
+    primaryKey,
+    inet,
+    jsonb,
+    check,
+    } from "drizzle-orm/pg-core";
 
-export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  displayName: varchar("display_name", { length: 80 }).notNull(),
-  fullName: varchar("full_name", { length: 120 }),
-  profileText: text("profile_text"),
-  avatarUrl: text("avatar_url"),
-  status: varchar("status", { length: 20 }).default("active").notNull(),
-  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
-  deletedAt: timestamp("deleted_at", { withTimezone: true }),
-  ...timestamps,
-});
+    export const users = pgTable(
+    "users",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        email: varchar("email", { length: 254 }).notNull(),        passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+        displayName: varchar("display_name", { length: 100 }).notNull(),
+        fullName: varchar("full_name", { length: 100 }),
+        profileText: text("profile_text"),
+        avatarUrl: text("avatar_url"),
+        status: varchar("status", { length: 32 }).notNull().default("active"),
+        lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+        deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    },
+    (table) => [
+        uniqueIndex("users_email_lower_unique").on(sql`lower(${table.email})`),
+        check(
+            "users_status_valid",
+            sql`${table.status} in ('active', 'inactive', 'suspended')`,
+        ),
+    ],
+    );
 
-export const userRoles = pgTable("user_roles", {
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  roleCode: varchar("role_code", { length: 20 }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [primaryKey({ columns: [table.userId, table.roleCode] })]);
+    export const organizers = pgTable(
+    "organizers",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        ownerUserId: uuid("owner_user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        name: varchar("name", { length: 100 }).notNull(),
+        slug: varchar("slug", { length: 100 }).notNull(),
+        description: text("description"),
+        websiteUrl: text("website_url"),
+        contactEmail: varchar("contact_email", { length: 254 }),
+        status: varchar("status", { length: 32 }).notNull().default("active"),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        uniqueIndex("organizers_slug_unique").on(table.slug),
+        index("organizers_owner_user_id_index").on(table.ownerUserId),
+        check(
+            "organizers_status_valid",
+            sql`${table.status} in ('active', 'inactive', 'suspended')`,
+        ),
+    ],
+    );
 
-export const organizers = pgTable("organizers", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  ownerUserId: uuid("owner_user_id").references(() => users.id).notNull(),
-  name: varchar("name", { length: 120 }).notNull(),
-  slug: varchar("slug", { length: 120 }).notNull().unique(),
-  description: text("description"),
-  websiteUrl: text("website_url"),
-  contactEmail: varchar("contact_email", { length: 255 }),
-  status: varchar("status", { length: 20 }).default("active").notNull(),
-  ...timestamps,
-});
+    export const categories = pgTable(
+    "categories",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        name: varchar("name", { length: 100 }).notNull(),
+        slug: varchar("slug", { length: 100 }).notNull(),
+        description: text("description"),
+        displayOrder: integer("display_order").notNull().default(0),
+        status: varchar("status", { length: 32 }).notNull().default("active"),
+        createdBy: uuid("created_by").references(() => users.id, {
+        onDelete: "set null",
+        }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        uniqueIndex("categories_slug_unique").on(table.slug),
+        check(
+            "categories_status_valid",
+            sql`${table.status} in ('active', 'inactive')`,
+        ),
+    ],
+    );
 
-export const organizerMembers = pgTable("organizer_members", {
-  organizerId: uuid("organizer_id").references(() => organizers.id, { onDelete: "cascade" }).notNull(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  memberRole: varchar("member_role", { length: 20 }).default("member").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [primaryKey({ columns: [table.organizerId, table.userId] })]);
+    export const tags = pgTable(
+    "tags",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        name: varchar("name", { length: 100 }).notNull(),
+        slug: varchar("slug", { length: 100 }).notNull(),
+        createdBy: uuid("created_by").references(() => users.id, {
+        onDelete: "set null",
+        }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [uniqueIndex("tags_slug_unique").on(table.slug)],
+    );
 
-export const categories = pgTable("categories", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 120 }).notNull(),
-  slug: varchar("slug", { length: 120 }).notNull().unique(),
-  description: text("description"),
-  displayOrder: integer("display_order").default(0).notNull(),
-  status: varchar("status", { length: 20 }).default("active").notNull(),
-  createdBy: uuid("created_by").references(() => users.id),
-  ...timestamps,
-});
+    export const events = pgTable(
+    "events",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        organizerId: uuid("organizer_id")
+        .notNull()
+        .references(() => organizers.id, { onDelete: "restrict" }),
+        categoryId: uuid("category_id")
+        .notNull()
+        .references(() => categories.id, { onDelete: "restrict" }),
+        createdBy: uuid("created_by")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        title: varchar("title", { length: 200 }).notNull(),
+        summary: varchar("summary", { length: 500 }),
+        description: text("description").notNull(),
+        format: varchar("format", { length: 32 }).notNull(),
+        venueName: varchar("venue_name", { length: 200 }),
+        address: text("address"),
+        onlineUrl: text("online_url"),
+        startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+        endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+        timezone: varchar("timezone", { length: 64 }).notNull(),
+        capacity: integer("capacity").notNull(),
+        waitlistEnabled: boolean("waitlist_enabled").notNull().default(false),
+        applicationStartAt: timestamp("application_start_at", {
+        withTimezone: true,
+        }),
+        applicationDeadline: timestamp("application_deadline", {
+        withTimezone: true,
+        }),
+        status: varchar("status", { length: 32 }).notNull().default("draft"),
+        visibility: varchar("visibility", { length: 32 })
+        .notNull()
+        .default("public"),
+        publishedAt: timestamp("published_at", { withTimezone: true }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+        version: integer("version").notNull().default(1),
+    },
+    (table) => [
+        index("events_organizer_id_index").on(table.organizerId),
+        index("events_category_id_index").on(table.categoryId),
+        index("events_start_at_index").on(table.startAt),
+        index("events_status_visibility_start_at_index").on(
+            table.status,
+            table.visibility,
+            table.startAt,
+        ),
+        check("events_capacity_positive", sql`${table.capacity} > 0`),
+        check(
+            "events_format_valid",
+            sql`${table.format} in ('online', 'offline', 'hybrid')`,
+        ),
+        check(
+            "events_status_valid",
+            sql`${table.status} in ('draft', 'published', 'cancelled', 'completed')`,
+        ),
+        check(
+            "events_visibility_valid",
+            sql`${table.visibility} in ('public', 'private', 'unlisted')`,
+        ),
+        check(
+            "events_format_location_valid",
+            sql`(
+                (${table.format} = 'online' and nullif(trim(${table.onlineUrl}), '') is not null)
+                or (${table.format} = 'offline' and nullif(trim(${table.venueName}), '') is not null)
+                or (
+                    ${table.format} = 'hybrid'
+                    and nullif(trim(${table.onlineUrl}), '') is not null
+                    and nullif(trim(${table.venueName}), '') is not null
+                )
+            )`,
+        ),
+        check("events_time_order", sql`${table.endAt} > ${table.startAt}`),
+        check(
+            "events_application_deadline_before_start",
+            sql`${table.applicationDeadline} IS NULL OR ${table.applicationDeadline} <= ${table.startAt}`,
+        ),
+        check(
+            "events_application_window_order",
+            sql`${table.applicationStartAt} IS NULL OR ${table.applicationDeadline} IS NULL OR ${table.applicationStartAt} <= ${table.applicationDeadline}`,
+        ),
+        check("events_version_positive", sql`${table.version} >= 1`),
+    ],
+);
 
-export const tags = pgTable("tags", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 80 }).notNull(),
-  slug: varchar("slug", { length: 80 }).notNull().unique(),
-  createdBy: uuid("created_by").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+    export const userRoles = pgTable(
+        "user_roles",
+        {
+            userId: uuid("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "restrict" }),
+            roleCode: varchar("role_code", { length: 32 }).notNull(),
+            createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        },
+        (table) => [
+            primaryKey({ columns: [table.userId, table.roleCode] }),
+            check(
+                "user_roles_role_code_valid",
+                sql`${table.roleCode} in ('participant', 'organizer', 'admin')`,
+            ),
+        ],
+    );
 
-export const events = pgTable("events", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  organizerId: uuid("organizer_id").references(() => organizers.id).notNull(),
-  categoryId: uuid("category_id").references(() => categories.id).notNull(),
-  createdBy: uuid("created_by").references(() => users.id).notNull(),
-  title: varchar("title", { length: 160 }).notNull(),
-  summary: varchar("summary", { length: 300 }),
-  description: text("description").notNull(),
-  format: varchar("format", { length: 20 }).notNull(),
-  venueName: varchar("venue_name", { length: 160 }),
-  address: text("address"),
-  onlineUrl: text("online_url"),
-  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
-  endAt: timestamp("end_at", { withTimezone: true }).notNull(),
-  timezone: varchar("timezone", { length: 50 }).default("Asia/Tokyo").notNull(),
-  capacity: integer("capacity").notNull(),
-  waitlistEnabled: boolean("waitlist_enabled").default(false).notNull(),
-  applicationStartAt: timestamp("application_start_at", { withTimezone: true }),
-  applicationDeadline: timestamp("application_deadline", { withTimezone: true }).notNull(),
-  status: varchar("status", { length: 20 }).default("draft").notNull(),
-  visibility: varchar("visibility", { length: 20 }).default("public").notNull(),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-  version: integer("version").default(1).notNull(),
-  ...timestamps,
-}, (table) => [
-  index("events_public_search_idx").on(table.status, table.startAt),
-  index("events_category_idx").on(table.categoryId),
-  index("events_organizer_idx").on(table.organizerId),
-]);
+    export const organizerMembers = pgTable(
+        "organizer_members",
+        {
+            organizerId: uuid("organizer_id")
+            .notNull()
+            .references(() => organizers.id, { onDelete: "restrict" }),
+            userId: uuid("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "restrict" }),
+            memberRole: varchar("member_role", { length: 32 })
+            .notNull()
+            .default("member"),
+            createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        },
+        (table) => [
+            primaryKey({ columns: [table.organizerId, table.userId] }),
+            index("organizer_members_user_id_index").on(table.userId),
+            check(
+                "organizer_members_member_role_valid",
+                sql`${table.memberRole} in ('owner', 'admin', 'member')`,
+            ),
+        ],
+    );
 
-export const eventTags = pgTable("event_tags", {
-  eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }).notNull(),
-  tagId: uuid("tag_id").references(() => tags.id, { onDelete: "cascade" }).notNull(),
-}, (table) => [primaryKey({ columns: [table.eventId, table.tagId] })]);
+    export const eventTags = pgTable(
+        "event_tags",
+        {
+            eventId: uuid("event_id")
+            .notNull()
+            .references(() => events.id, { onDelete: "cascade" }),
+            tagId: uuid("tag_id")
+            .notNull()
+            .references(() => tags.id, { onDelete: "restrict" }),
+        },
+        (table) => [
+            primaryKey({ columns: [table.eventId, table.tagId] }),
+            index("event_tags_tag_id_index").on(table.tagId),
+        ],
+    );
 
-export const registrations = pgTable("registrations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  eventId: uuid("event_id").references(() => events.id).notNull(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  status: varchar("status", { length: 20 }).notNull(),
-  waitlistPosition: integer("waitlist_position"),
-  appliedAt: timestamp("applied_at", { withTimezone: true }).defaultNow().notNull(),
-  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
-  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
-  checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
-  cancellationReason: varchar("cancellation_reason", { length: 255 }),
-  checkinNote: varchar("checkin_note", { length: 255 }),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  version: integer("version").default(1).notNull(),
-}, (table) => [
-  uniqueIndex("registrations_active_user_event_idx").on(table.eventId, table.userId).where(sql`${table.status} <> 'cancelled'`),
-  uniqueIndex("registrations_waitlist_position_idx").on(table.eventId, table.waitlistPosition).where(sql`${table.status} = 'waitlisted'`),
-  index("registrations_event_status_idx").on(table.eventId, table.status),
-]);
+    export const registrations = pgTable(
+        "registrations",
+        {
+            id: uuid("id").defaultRandom().primaryKey(),
+            eventId: uuid("event_id")
+            .notNull()
+            .references(() => events.id, { onDelete: "restrict" }),
+            userId: uuid("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "restrict" }),
+            status: varchar("status", { length: 32 }).notNull().default("pending"),
+            waitlistPosition: integer("waitlist_position"),
+            appliedAt: timestamp("applied_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+            confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+            cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+            checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+            cancellationReason: varchar("cancellation_reason", { length: 500 }),
+            checkinNote: varchar("checkin_note", { length: 500 }),
+            updatedAt: timestamp("updated_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+            version: integer("version").notNull().default(1),
+        },
+        (table) => [
+            uniqueIndex("registrations_event_user_unique").on(      //DBレベルで同一ユーザの同一イベントへの重複登録を防ぐ
+            table.eventId,
+            table.userId,
+            ),
+            uniqueIndex("registrations_waitlist_position_unique")
+                .on(table.eventId, table.waitlistPosition)
+                .where(sql`${table.status} = 'waitlisted'`),
+            index("registrations_event_status_index").on(table.eventId, table.status),
+            index("registrations_user_id_index").on(table.userId),
+            check(
+                "registrations_waitlist_position_positive",
+                sql`${table.waitlistPosition} IS NULL OR ${table.waitlistPosition} > 0`,
+            ),
+            check(
+                "registrations_status_valid",
+                sql`${table.status} in ('pending', 'confirmed', 'waitlisted', 'cancelled', 'checked_in', 'no_show')`,
+            ),
+            check("registrations_version_positive", sql`${table.version} >= 1`),
+        ],
+    );
 
-export const registrationStatusHistories = pgTable("registration_status_histories", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  registrationId: uuid("registration_id").references(() => registrations.id).notNull(),
-  eventId: uuid("event_id").references(() => events.id).notNull(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  fromStatus: varchar("from_status", { length: 20 }),
-  toStatus: varchar("to_status", { length: 20 }).notNull(),
-  changedByUserId: uuid("changed_by_user_id").references(() => users.id),
-  reason: varchar("reason", { length: 255 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+    export const registrationStatusHistories = pgTable(
+        "registration_status_histories",
+        {
+            id: uuid("id").defaultRandom().primaryKey(),
+            registrationId: uuid("registration_id")
+            .notNull()
+            .references(() => registrations.id, { onDelete: "restrict" }),
+            fromStatus: varchar("from_status", { length: 32 }),
+            toStatus: varchar("to_status", { length: 32 }).notNull(),
+            changedByUserId: uuid("changed_by_user_id").references(() => users.id, {
+            onDelete: "set null",
+            }),
+            reason: varchar("reason", { length: 500 }),
+            createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        },
+        (table) => [
+            index("registration_status_histories_registration_created_at_index").on(
+                table.registrationId,
+                table.createdAt,
+            ),
+            check(
+                "registration_status_histories_from_status_valid",
+                sql`${table.fromStatus} is null or ${table.fromStatus} in ('pending', 'confirmed', 'waitlisted', 'cancelled', 'checked_in', 'no_show')`,
+            ),
+            check(
+                "registration_status_histories_to_status_valid",
+                sql`${table.toStatus} in ('pending', 'confirmed', 'waitlisted', 'cancelled', 'checked_in', 'no_show')`,
+            ),
+        ],
+    );
+    export const userFavoriteOrganizers = pgTable(
+    "user_favorite_organizers",
+    {
+        userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+        organizerId: uuid("organizer_id")
+        .notNull()
+        .references(() => organizers.id, { onDelete: "cascade" }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        primaryKey({ columns: [table.userId, table.organizerId] }),
+        index("user_favorite_organizers_organizer_id_index").on(
+        table.organizerId,
+        ),
+    ],
+    );
 
-export const userFavoriteOrganizers = pgTable("user_favorite_organizers", {
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  organizerId: uuid("organizer_id").references(() => organizers.id, { onDelete: "cascade" }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [primaryKey({ columns: [table.userId, table.organizerId] })]);
+    export const userFavoriteCategories = pgTable(
+    "user_favorite_categories",
+    {
+        userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+        categoryId: uuid("category_id")
+        .notNull()
+        .references(() => categories.id, { onDelete: "cascade" }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        primaryKey({ columns: [table.userId, table.categoryId] }),
+        index("user_favorite_categories_category_id_index").on(
+        table.categoryId,
+        ),
+    ],
+    );
 
-export const userFavoriteCategories = pgTable("user_favorite_categories", {
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  categoryId: uuid("category_id").references(() => categories.id, { onDelete: "cascade" }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [primaryKey({ columns: [table.userId, table.categoryId] })]);
+    export const eventChangeLogs = pgTable(
+    "event_change_logs",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        eventId: uuid("event_id")
+        .notNull()
+        .references(() => events.id, { onDelete: "restrict" }),
+        changedByUserId: uuid("changed_by_user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        changeType: varchar("change_type", { length: 32 }).notNull(),
+        beforeData: jsonb("before_data").$type<Record<string, unknown>>(),
+        afterData: jsonb("after_data").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("event_change_logs_event_created_at_index").on(
+        table.eventId,
+        table.createdAt,
+        ),
+    ],
+    );
 
-export const eventChangeLogs = pgTable("event_change_logs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  eventId: uuid("event_id").references(() => events.id).notNull(),
-  changedByUserId: uuid("changed_by_user_id").references(() => users.id).notNull(),
-  changeType: varchar("change_type", { length: 30 }).notNull(),
-  beforeData: jsonb("before_data"),
-  afterData: jsonb("after_data"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+    export const moderationActions = pgTable(
+    "moderation_actions",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        actorUserId: uuid("actor_user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "restrict" }),
+        targetType: varchar("target_type", { length: 32 }).notNull(),
+        targetId: uuid("target_id").notNull(),
+        action: varchar("action", { length: 32 }).notNull(),
+        reason: text("reason"),
+        metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("moderation_actions_target_index").on(
+        table.targetType,
+        table.targetId,
+        ),
+    ],
+    );
 
-export const moderationActions = pgTable("moderation_actions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  actorUserId: uuid("actor_user_id").references(() => users.id).notNull(),
-  targetType: varchar("target_type", { length: 30 }).notNull(),
-  targetId: uuid("target_id").notNull(),
-  action: varchar("action", { length: 30 }).notNull(),
-  reason: text("reason"),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const operationLogs = pgTable("operation_logs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  actorUserId: uuid("actor_user_id").references(() => users.id),
-  action: varchar("action", { length: 80 }).notNull(),
-  resourceType: varchar("resource_type", { length: 50 }).notNull(),
-  resourceId: uuid("resource_id"),
-  ipAddress: inet("ip_address"),
-  userAgent: text("user_agent"),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+    export const operationLogs = pgTable(
+    "operation_logs",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        actorUserId: uuid("actor_user_id").references(() => users.id, {
+        onDelete: "set null",
+        }),
+        action: varchar("action", { length: 64 }).notNull(),
+        resourceType: varchar("resource_type", { length: 32 }).notNull(),
+        resourceId: uuid("resource_id"),
+        ipAddress: inet("ip_address"),
+        userAgent: text("user_agent"),
+        metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+        index("operation_logs_resource_index").on(
+        table.resourceType,
+        table.resourceId,
+        ),
+        index("operation_logs_actor_created_at_index").on(
+        table.actorUserId,
+        table.createdAt,
+        ),
+    ],
+    );
 
 export const authSessions = pgTable("auth_sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -202,3 +485,36 @@ export const authSessions = pgTable("auth_sessions", {
   ipAddress: inet("ip_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("auth_sessions_family_idx").on(table.familyId)]);
+
+export const userSavedEvents = pgTable("user_saved_events", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.eventId] }),
+  index("user_saved_events_event_idx").on(table.eventId),
+]);
+
+export const userNotificationSettings = pgTable("user_notification_settings", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  registrationUpdates: boolean("registration_updates").notNull().default(true),
+  eventReminders: boolean("event_reminders").notNull().default(true),
+  recommendations: boolean("recommendations").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userNotifications = pgTable("user_notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("user_notifications_dedupe_idx").on(table.userId, table.dedupeKey),
+  index("user_notifications_user_created_idx").on(table.userId, table.createdAt),
+  check("user_notifications_kind_valid", sql`${table.kind} in ('registration', 'reminder', 'recommendation')`),
+]);

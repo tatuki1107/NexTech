@@ -1,55 +1,51 @@
-# services:
-#   frontend:
-#     build: ./Frontend
-#     ports:
-#       - "3000:3000"
-#     volumes:
-#       - ./Frontend:/app
-#     depends_on:
-#       - backend
-
-#   backend:
-#     build: ./Backend/app
-#     ports:
-#       - "3001:3001"
-#     volumes:
-#       - ./Backend/app:/app
-
 services:
   frontend:
     build: ./Frontend
     ports:
       - "3000:3000"
+    environment:
+      INTERNAL_API_BASE_URL: http://backend:3001
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   backend:
     build: ./Backend/app
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: postgresql://nextech:nextech@database:5432/nextech
-      JWT_SECRET: docker-development-secret-at-least-32-characters
-      ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nextech}:${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nextech}
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-development-only-secret-at-least-32-chars}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
     depends_on:
-      database:
+      db:
         condition: service_healthy
-
-  database:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: nextech
-      POSTGRES_USER: nextech
-      POSTGRES_PASSWORD: nextech
-    ports:
-      - "55432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nextech -d nextech"]
+      test: ["CMD", "bun", "--eval", "fetch('http://localhost:3001/api/db-health').then(res => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./Backend/app:/app
+      - backend_node_modules:/app/node_modules
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nextech}
+      POSTGRES_USER: ${POSTGRES_USER:-nextech}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  postgres-data:
+  postgres_data:
+  backend_node_modules:

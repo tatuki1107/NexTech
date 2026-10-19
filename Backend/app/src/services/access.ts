@@ -4,7 +4,8 @@ import { forbidden, notFound } from "../lib/errors";
 
 export const canManageOrganizer = async (user: CurrentUser, organizerId: string): Promise<boolean> => {
   if (user.roles.includes("admin")) return true;
-  const rows = await sqlClient`SELECT 1 FROM organizer_members WHERE organizer_id=${organizerId} AND user_id=${user.id}`;
+  const rows = await sqlClient`SELECT 1 FROM organizers o WHERE o.id=${organizerId}
+    AND (o.owner_user_id=${user.id} OR EXISTS (SELECT 1 FROM organizer_members m WHERE m.organizer_id=o.id AND m.user_id=${user.id}))`;
   return rows.length > 0;
 };
 

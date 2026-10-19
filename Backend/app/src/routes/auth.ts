@@ -20,9 +20,10 @@ const readIp = (headers: Record<string, string | undefined>) => {
 
 export const authRoutes = new Elysia({ prefix: "/auth" })
   .post("/signup", async ({ body, cookie, headers, set }) => {
+    assertAllowedOrigin(headers.origin);
     assertRateLimit(`signup:${readIp(headers) ?? "unknown"}`, 10, 60_000);
     const email = body.email.trim().toLowerCase();
-    const duplicate = await sqlClient`SELECT 1 FROM users WHERE email=${email}`;
+    const duplicate = await sqlClient`SELECT 1 FROM users WHERE lower(email)=${email}`;
     if (duplicate.length) throw new ApiError(409, "CONFLICT", "このメールアドレスは既に登録されています");
     const passwordHash = await Bun.password.hash(body.password, "argon2id");
     const user = await sqlClient.begin(async (tx) => {
@@ -40,16 +41,17 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     set.status = 201;
     return authResponse(user);
   }, { body: t.Object({
-    email: t.String({ format: "email", maxLength: 255 }), password: t.String({ minLength: 8, maxLength: 200 }),
-    displayName: t.String({ minLength: 1, maxLength: 80 }), fullName: t.Optional(t.String({ maxLength: 120 })),
+    email: t.String({ format: "email", maxLength: 254 }), password: t.String({ minLength: 8, maxLength: 200 }),
+    displayName: t.String({ minLength: 1, maxLength: 80 }), fullName: t.Optional(t.String({ maxLength: 100 })),
   }) })
   .post("/login", async ({ body, cookie, headers }) => {
+    assertAllowedOrigin(headers.origin);
     const email = body.email.trim().toLowerCase();
     assertRateLimit(`login:${readIp(headers) ?? "unknown"}:${email}`, 10, 60_000);
     const rows = await sqlClient`SELECT u.id,u.email,u.password_hash AS "passwordHash",u.display_name AS "displayName",
       u.full_name AS "fullName",u.profile_text AS "profileText",u.avatar_url AS "avatarUrl",u.status,
       COALESCE(array_agg(ur.role_code) FILTER (WHERE ur.role_code IS NOT NULL),'{}') AS roles
-      FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE u.email=${email} GROUP BY u.id`;
+      FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id WHERE lower(u.email)=${email} GROUP BY u.id`;
     const user = rows[0] as (CurrentUser & { passwordHash: string }) | undefined;
     if (!user || user.status !== "active" || !(await Bun.password.verify(body.password, user.passwordHash))) {
       throw new ApiError(401, "AUTH_REQUIRED", "メールアドレスまたはパスワードが正しくありません");
@@ -74,6 +76,6 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     assertAllowedOrigin(headers.origin);
     const raw = cookie[REFRESH_COOKIE_NAME].value;
     await revokeRefreshSession(typeof raw === "string" ? raw : null);
-    cookie[REFRESH_COOKIE_NAME].remove();
+    cookie[REFRESH_COOKIE_NAME].set({ value: "", ...cookieOptions, maxAge: 0 });
     set.status = 204;
   });

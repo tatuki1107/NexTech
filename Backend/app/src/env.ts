@@ -29,7 +29,7 @@ export const loadEnv = (): AppEnv => {
   return {
     NODE_ENV: nodeEnv,
     PORT: port,
-    DATABASE_URL: required("DATABASE_URL", "postgresql://nextech:nextech@localhost:55432/nextech"),
+    DATABASE_URL: required("DATABASE_URL"),
     JWT_SECRET: jwtSecret,
     JWT_ISSUER: process.env.JWT_ISSUER ?? "nextech-api",
     JWT_AUDIENCE: process.env.JWT_AUDIENCE ?? "nextech-web",
