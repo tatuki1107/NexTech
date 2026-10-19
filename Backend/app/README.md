@@ -12,4 +12,9 @@ To start the development server run:
 bun run dev
 ```
 
-Open http://localhost:3000/ with your browser to see the result.
+起動前に `.env.example` を `.env` にコピーし、`DATABASE_URL` を設定してください。
+PostgreSQLの準備とマイグレーションの手順は
+[Contributing Guide](../../CONTRIBUTING.md#3-ローカルでの起動) を参照してください。
+
+Backendは http://localhost:3001/ で起動します。
+疎通確認は `/api`、DB接続確認は `/api/db-health` です。
