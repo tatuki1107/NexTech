@@ -471,3 +471,17 @@ import {
         ),
     ],
     );
+
+export const authSessions = pgTable("auth_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  familyId: uuid("family_id").notNull(),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  replacedById: uuid("replaced_by_id"),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  userAgent: text("user_agent"),
+  ipAddress: inet("ip_address"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("auth_sessions_family_idx").on(table.familyId)]);

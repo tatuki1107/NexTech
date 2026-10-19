@@ -9,5 +9,5 @@ if (!databaseUrl) {
     throw new Error("DATABASE_URL is not set");
 }
 
-const client = postgres(databaseUrl);
+const client = postgres(databaseUrl, { prepare: process.env.DB_PREPARE !== "false" });
 export const db = drizzle({ client });
