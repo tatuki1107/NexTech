@@ -21,7 +21,9 @@ Next.js側の `INTERNAL_API_BASE_URL` にBackendのURLを設定してくださ�
 
 ## 現在の制約
 
-参加申込・キャンセルの認証付きAPIは未実装です。詳細画面では操作を無効化し、
+認証・申込・キャンセルのAPIは `/api/v1` に実装済みです。
+仕様と検証手順は [Backend README](Backend/app/README.md) を参照してください。
+画面側の認証・申込接続は今回の対象外です。詳細画面では操作を無効化し、
 準備中であることを表示しています。マイページの参加一覧はサンプル表示です。
 人数集計では `pending`、`confirmed`、`checked_in`、`no_show` を参加枠の使用数として扱い、
 `waitlisted` と `cancelled` は除外します。
