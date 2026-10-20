@@ -19,7 +19,7 @@ export const getEventById = async (eventId: string, user: CurrentUser | null, in
   const rows = await sqlClient.unsafe(`${eventSelect},
     (SELECT status FROM registrations r WHERE r.event_id=e.id AND r.user_id=$2 AND r.status<>'cancelled' LIMIT 1) AS "registrationStatus"
     FROM events e JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
-    WHERE e.id=$1 ${includePrivate ? "" : "AND e.status='published'"}`, [eventId, user?.id ?? null]);
+    WHERE e.id=$1 ${includePrivate ? "" : "AND e.status='published' AND o.status='active'"}`, [eventId, user?.id ?? null]);
   const event = rows[0] as Record<string, unknown> | undefined;
   if (!event) throw notFound("イベントが見つかりません");
   const organizer = event.organizer as { id: string };

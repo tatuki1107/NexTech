@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: NexTech API
-  version: 1.2.0
+  version: 1.2.1
   description: |
     エンジニア向け勉強会・イベントマッチングサービス「NexTech」のMVP向けAPI仕様。
     イベント検索、参加申込、キャンセル待ち、主催者運営、管理者集計を対象とする。
@@ -473,6 +473,7 @@ paths:
       tags:
         - Events
       summary: 公開イベント検索
+      description: 有効な主催者の公開イベントのみ取得する。範囲外ページでもpagination.totalは絞り込み後の総件数を返す。
       security: []
       parameters:
         - name: keyword
@@ -493,7 +494,7 @@ paths:
         - $ref: '#/components/parameters/CategoryIdQuery'
         - name: tagIds
           in: query
-          description: カンマ区切りのタグID
+          description: カンマ区切りのUUID。いずれかのタグに一致するイベントを取得する。
           schema:
             type: string
         - name: organizerId
@@ -507,7 +508,7 @@ paths:
             $ref: '#/components/schemas/EventFormat'
         - name: hasCapacity
           in: query
-          description: trueは空席あり、falseは満席または定員0のイベントだけを返す。
+          description: trueは空席あり、falseは満席のイベントだけを返す。
           schema:
             type: boolean
         - $ref: '#/components/parameters/Page'
@@ -640,6 +641,7 @@ paths:
       tags:
         - Events
       summary: 自分の申込キャンセル
+      description: 開始前の申込のみキャンセル可能。中止・下書き状態・主催者停止中でもキャンセルできるが、待機者の繰り上げは行わない。開催済み・受付済みは422。
       parameters:
         - $ref: '#/components/parameters/EventId'
       responses:
@@ -654,6 +656,8 @@ paths:
                     $ref: '#/components/schemas/Registration'
         '404':
           $ref: '#/components/responses/NotFoundError'
+          '422':
+            $ref: '#/components/responses/BusinessRuleError'
   /events/{eventId}/recruitment-summary:
     get:
       tags:
@@ -678,6 +682,7 @@ paths:
       tags:
         - Organizers
       summary: 当日受付
+      description: 有効な主催者の公開中イベントで、参加確定済みの申込のみ受付できる。イベント行をロックし、中止処理との競合を防ぐ。
       parameters:
         - $ref: '#/components/parameters/EventId'
         - $ref: '#/components/parameters/RegistrationId'
@@ -852,6 +857,7 @@ paths:
       tags:
         - Admin
       summary: イベント公開状態変更
+      description: 中止済みイベントは中止状態のままとし、下書き経由の再公開も拒否する。停止中の主催者のイベントは公開できない。
       parameters:
         - $ref: '#/components/parameters/EventId'
       requestBody:
@@ -880,6 +886,8 @@ paths:
                     $ref: '#/components/schemas/Event'
         '403':
           $ref: '#/components/responses/ForbiddenError'
+          '422':
+            $ref: '#/components/responses/BusinessRuleError'
   /admin/analytics/monthly-events:
     get:
       tags:

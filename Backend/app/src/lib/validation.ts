@@ -6,10 +6,11 @@ export const SLUG_PATTERN = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
 export const pagination = (pageValue?: string | number, perPageValue?: string | number) => {
   const page = Number(pageValue ?? 1);
   const perPage = Number(perPageValue ?? 20);
-  if (!Number.isInteger(page) || page < 1 || !Number.isInteger(perPage) || perPage < 1 || perPage > 100) {
+  const offset = (page - 1) * perPage;
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isInteger(perPage) || perPage < 1 || perPage > 100 || !Number.isSafeInteger(offset)) {
     throw new ApiError(400, "VALIDATION_ERROR", "ページ指定が不正です");
   }
-  return { page, perPage, offset: (page - 1) * perPage };
+  return { page, perPage, offset };
 };
 
 export const assertEventTimes = (startAt: string, endAt: string, deadline: string | null): void => {

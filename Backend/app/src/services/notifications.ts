@@ -35,7 +35,8 @@ export const notifyPublishedEvent = async (
   await tx.unsafe(
     `INSERT INTO user_notifications (user_id,event_id,kind,title,message,dedupe_key)
     SELECT u.id,e.id,'recommendation','フォロー中の新着イベント',e.title,'published:'||e.id::text
-    FROM events e JOIN users u ON u.status='active' AND u.deleted_at IS NULL
+    FROM events e JOIN organizers o ON o.id=e.organizer_id AND o.status='active'
+    JOIN users u ON u.status='active' AND u.deleted_at IS NULL
     JOIN user_notification_settings s ON s.user_id=u.id AND s.recommendations
     WHERE e.id=$1 AND e.status='published' AND e.visibility='public'
       AND (EXISTS (SELECT 1 FROM user_favorite_organizers f WHERE f.user_id=u.id AND f.organizer_id=e.organizer_id)
@@ -55,6 +56,7 @@ export const generateEventReminders = async (
     SELECT r.user_id,e.id,'reminder',reminder.title,e.title,
       'reminder:'||r.id::text||':'||extract(epoch FROM e.start_at)::text||':'||reminder.name
     FROM registrations r JOIN events e ON e.id=r.event_id
+    JOIN organizers o ON o.id=e.organizer_id AND o.status='active'
     JOIN users u ON u.id=r.user_id AND u.status='active' AND u.deleted_at IS NULL
     LEFT JOIN user_notification_settings s ON s.user_id=r.user_id
     CROSS JOIN (VALUES ('day','開催前日のリマインド',interval '23 hours',interval '24 hours'),
