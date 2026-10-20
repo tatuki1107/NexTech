@@ -5,6 +5,7 @@ import { ApiError, notFound } from "../lib/errors";
 import { pagination, SLUG_PATTERN, UUID_PATTERN, assertEventTimes } from "../lib/validation";
 import { requireEventAccess, requireOrganizerAccess } from "../services/access";
 import { EVENT_SELECT_SQL, getEventById } from "../services/events";
+import { queryPage } from "../db/pagination";
 
 const eventFields = {
   title: t.String({ minLength: 1, maxLength: 160 }), summary: t.Optional(t.String({ maxLength: 300 })),
@@ -57,14 +58,11 @@ export const organizerRoutes = new Elysia()
   .get("/organizers/:organizerId/events", async ({ headers, params, query }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     await requireOrganizerAccess(user, params.organizerId);
-    const { page, perPage, offset } = pagination(query.page, query.perPage);
-    const rows = await sqlClient.unsafe(`${EVENT_SELECT_SQL},NULL::text AS "registrationStatus",count(*) OVER()::int AS total
+    const page = pagination(query.page, query.perPage);
+    return queryPage(`${EVENT_SELECT_SQL},NULL::text AS "registrationStatus",count(*) OVER()::int AS total
       FROM events e JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
-      WHERE e.organizer_id=$1 ${query.status ? "AND e.status=$2" : ""} ORDER BY e.start_at DESC
-      LIMIT $${query.status ? 3 : 2} OFFSET $${query.status ? 4 : 3}`,
-      query.status ? [params.organizerId, query.status, perPage, offset] : [params.organizerId, perPage, offset]);
-    const total = Number(rows[0]?.total ?? 0);
-    return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
+      WHERE e.organizer_id=$1 ${query.status ? "AND e.status=$2" : ""} ORDER BY e.start_at DESC,e.id`,
+      query.status ? [params.organizerId, query.status] : [params.organizerId], page);
   }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }), query: t.Object({
     status: t.Optional(t.Union([t.Literal("draft"),t.Literal("published"),t.Literal("cancelled"),t.Literal("completed")])),
     page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()),
@@ -126,20 +124,17 @@ export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId"
   .get("/registrations", async ({ headers, params, query }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     await requireEventAccess(user, params.eventId);
-    const { page, perPage, offset } = pagination(query.page, query.perPage);
+    const page = pagination(query.page, query.perPage);
     const values: Array<string | number> = [params.eventId];
     const clauses = ["r.event_id=$1"];
     if (query.status) { values.push(query.status); clauses.push(`r.status=$${values.length}`); }
     if (query.keyword) { values.push(`%${query.keyword}%`); clauses.push(`(u.display_name ILIKE $${values.length} OR u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length})`); }
-    values.push(perPage, offset);
-    const rows = await sqlClient.unsafe(`SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
+    return queryPage(`SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
       r.waitlist_position AS "waitlistPosition",r.applied_at AS "appliedAt",r.confirmed_at AS "confirmedAt",
       r.cancelled_at AS "cancelledAt",r.checked_in_at AS "checkedInAt",
       jsonb_build_object('id',u.id,'email',u.email,'displayName',u.display_name,'fullName',u.full_name,'roles','[]'::jsonb,'status',u.status) AS user,
       count(*) OVER()::int AS total FROM registrations r JOIN users u ON u.id=r.user_id
-      WHERE ${clauses.join(" AND ")} ORDER BY r.applied_at LIMIT $${values.length-1} OFFSET $${values.length}`, values);
-    const total = Number(rows[0]?.total ?? 0);
-    return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
+      WHERE ${clauses.join(" AND ")} ORDER BY r.applied_at,r.id`, values, page);
   }, { params: t.Object({ eventId: t.String({ pattern: UUID_PATTERN }) }), query: t.Object({
     status: t.Optional(t.Union([t.Literal("pending"),t.Literal("confirmed"),t.Literal("waitlisted"),t.Literal("cancelled"),t.Literal("checked_in"),t.Literal("no_show")])),
     keyword: t.Optional(t.String({ maxLength: 200 })), page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()),
@@ -160,6 +155,13 @@ export const organizerOperationsRoutes = new Elysia({ prefix: "/events/:eventId"
     const user = (await getCurrentUser(headers.authorization))!;
     await requireEventAccess(user, params.eventId);
     const result = await sqlClient.begin(async (tx) => {
+      // Match cancellation/moderation lock order: event first, then registration.
+      const [event] = await tx`SELECT status,organizer_id FROM events WHERE id=${params.eventId} FOR UPDATE`;
+      if (!event) throw notFound("イベントが見つかりません");
+      if (event.status !== "published") throw new ApiError(422, "BUSINESS_RULE_ERROR", "公開中のイベントだけ受付できます");
+      if (!(await tx`SELECT 1 FROM organizers WHERE id=${event.organizer_id} AND status='active'`).length) {
+        throw new ApiError(422, "BUSINESS_RULE_ERROR", "停止中の主催者のイベントは受付できません");
+      }
       const [registration] = await tx`SELECT * FROM registrations WHERE id=${params.registrationId} AND event_id=${params.eventId} FOR UPDATE`;
       if (!registration) throw notFound("申込が見つかりません");
       if (registration.status !== "confirmed") throw new ApiError(422, "BUSINESS_RULE_ERROR", "参加確定済みの申込だけ受付できます");

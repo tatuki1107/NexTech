@@ -5,6 +5,7 @@ import { ApiError, notFound } from "../lib/errors";
 import { pagination, UUID_PATTERN } from "../lib/validation";
 import { EVENT_SELECT_SQL, getEventById } from "../services/events";
 import { notifyPublishedEvent, notifyRegistration } from "../services/notifications";
+import { queryPage } from "../db/pagination";
 
 const eventStatuses = ["draft", "published", "cancelled", "completed"] as const;
 
@@ -12,14 +13,11 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
   .get("/events", async ({ headers, query }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     requireRole(user, "admin");
-    const { page, perPage, offset } = pagination(query.page, query.perPage);
-    const rows = await sqlClient.unsafe(`${EVENT_SELECT_SQL},NULL::text AS "registrationStatus",count(*) OVER()::int AS total
+    const page = pagination(query.page, query.perPage);
+    return queryPage(`${EVENT_SELECT_SQL},NULL::text AS "registrationStatus",count(*) OVER()::int AS total
       FROM events e JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
-      ${query.status ? "WHERE e.status=$1" : ""} ORDER BY e.created_at DESC
-      LIMIT $${query.status ? 2 : 1} OFFSET $${query.status ? 3 : 2}`,
-      query.status ? [query.status, perPage, offset] : [perPage, offset]);
-    const total = Number(rows[0]?.total ?? 0);
-    return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
+      ${query.status ? "WHERE e.status=$1" : ""} ORDER BY e.created_at DESC,e.id`,
+      query.status ? [query.status] : [], page);
   }, { query: t.Object({ status: t.Optional(t.Union(eventStatuses.map((status) => t.Literal(status)))), page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()) }) })
   .patch("/events/:eventId/status", async ({ headers, params, body }) => {
     const user = (await getCurrentUser(headers.authorization))!;
@@ -27,8 +25,11 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
     const result = await sqlClient.begin(async (tx) => {
       const [current] = await tx`SELECT * FROM events WHERE id=${params.eventId} FOR UPDATE`;
       if (!current) throw notFound("イベントが見つかりません");
-      if (body.status === "published" && current.status === "cancelled") {
-        throw new ApiError(422, "BUSINESS_RULE_ERROR", "中止済みイベントは再公開できません");
+      if (body.status !== "cancelled" && current.status === "cancelled") {
+        throw new ApiError(422, "BUSINESS_RULE_ERROR", "中止済みイベントの状態は変更できません");
+      }
+      if (body.status === "published" && !(await tx`SELECT 1 FROM organizers WHERE id=${current.organizer_id} AND status='active'`).length) {
+        throw new ApiError(422, "BUSINESS_RULE_ERROR", "停止中の主催者のイベントは公開できません");
       }
       await tx`UPDATE events SET status=${body.status},published_at=CASE WHEN ${body.status}='published' THEN COALESCE(published_at,now()) ELSE published_at END,
         updated_at=now(),version=version+1 WHERE id=${params.eventId}`;

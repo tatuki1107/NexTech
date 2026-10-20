@@ -3,6 +3,7 @@ import { sqlClient } from "../db";
 import { getCurrentUser, toPublicUser } from "../lib/auth";
 import { notFound } from "../lib/errors";
 import { pagination, UUID_PATTERN } from "../lib/validation";
+import { queryPage } from "../db/pagination";
 
 export const meRoutes = new Elysia({ prefix: "/me" })
   .get("", async ({ headers }) => ({ data: toPublicUser((await getCurrentUser(headers.authorization))!) }))
@@ -23,13 +24,13 @@ export const meRoutes = new Elysia({ prefix: "/me" })
   }) })
   .get("/registrations", async ({ headers, query }) => {
     const user = (await getCurrentUser(headers.authorization))!;
-    const { page, perPage, offset } = pagination(query.page, query.perPage);
+    const page = pagination(query.page, query.perPage);
     const viewClause: Record<string, string> = {
       upcoming: "AND e.start_at >= now() AND r.status <> 'cancelled'", past: "AND e.start_at < now()",
       waitlisted: "AND r.status='waitlisted'", cancelled: "AND r.status='cancelled'",
     };
     const clause = query.view ? viewClause[query.view] ?? "" : "";
-    const rows = await sqlClient.unsafe(`SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
+    return queryPage(`SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
       r.waitlist_position AS "waitlistPosition",r.applied_at AS "appliedAt",r.confirmed_at AS "confirmedAt",
       r.cancelled_at AS "cancelledAt",r.checked_in_at AS "checkedInAt",
       jsonb_build_object('id',e.id,'title',e.title,'summary',e.summary,'format',e.format,'venueName',e.venue_name,
@@ -44,9 +45,7 @@ export const meRoutes = new Elysia({ prefix: "/me" })
         'registrationStatus',CASE WHEN r.status='cancelled' THEN NULL ELSE r.status END) AS event,
       count(*) OVER()::int AS total FROM registrations r JOIN events e ON e.id=r.event_id
       JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
-      WHERE r.user_id=$1 ${clause} ORDER BY e.start_at DESC LIMIT $2 OFFSET $3`, [user.id, perPage, offset]);
-    const total = Number(rows[0]?.total ?? 0);
-    return { data: rows.map((value: unknown) => { const { total: _total, ...row } = value as Record<string, unknown>; return row; }), pagination: { page, perPage, total } };
+      WHERE r.user_id=$1 ${clause} ORDER BY e.start_at DESC,r.id`, [user.id], page);
   }, { query: t.Object({
     view: t.Optional(t.Union([t.Literal("upcoming"),t.Literal("past"),t.Literal("waitlisted"),t.Literal("cancelled")])),
     page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()),

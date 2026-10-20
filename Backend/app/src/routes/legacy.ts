@@ -1,6 +1,7 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { sql } from "drizzle-orm";
 import { db } from "../db/client";
+import { UUID_PATTERN } from "../lib/validation";
 
 export const legacyRoutes = new Elysia()
   .get("/api", () => ({ message: "Hello Elysia" }))
@@ -30,7 +31,7 @@ export const legacyRoutes = new Elysia()
       inner join categories on categories.id = events.category_id
       inner join organizers on organizers.id = events.organizer_id
       left join registrations on registrations.event_id = events.id
-      where events.status = 'published' and events.visibility = 'public'
+      where events.status = 'published' and events.visibility = 'public' and organizers.status = 'active'
       group by events.id, categories.name, organizers.name
       order by events.start_at asc
     `);
@@ -67,6 +68,7 @@ export const legacyRoutes = new Elysia()
       where events.id = ${params.id}
         and events.status = 'published'
         and events.visibility = 'public'
+        and organizers.status = 'active'
       group by events.id, categories.name, organizers.name
     `);
 
@@ -77,4 +79,4 @@ export const legacyRoutes = new Elysia()
     }
 
     return { event };
-  });
+  }, { params: t.Object({ id: t.String({ pattern: UUID_PATTERN }) }) });

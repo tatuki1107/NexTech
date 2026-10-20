@@ -10,7 +10,7 @@ const pageQuery = {
 };
 
 // A saved event never grants visibility: re-check access whenever it is listed.
-const savedVisibility = `e.status IN ('published','completed','cancelled') AND
+const savedVisibility = `e.status IN ('published','completed','cancelled') AND o.status='active' AND
   (e.visibility <> 'private' OR EXISTS (SELECT 1 FROM organizers own WHERE own.id=e.organizer_id AND own.owner_user_id=$1)
     OR EXISTS (SELECT 1 FROM organizer_members m WHERE m.organizer_id=e.organizer_id AND m.user_id=$1)
     OR $2::boolean)`;

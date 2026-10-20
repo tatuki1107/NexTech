@@ -13,6 +13,7 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
     const result = await sqlClient.begin(async (tx) => {
       const [event] = await tx`SELECT * FROM events WHERE id=${params.eventId} FOR UPDATE`;
       if (!event) throw notFound("イベントが見つかりません");
+      if (!(await tx`SELECT 1 FROM organizers WHERE id=${event.organizer_id} AND status='active'`).length) throw notFound("イベントが見つかりません");
       if (event.visibility === "private" && !user.roles.includes("admin") && event.created_by !== user.id && !(await tx`SELECT 1 FROM organizer_members WHERE organizer_id=${event.organizer_id} AND user_id=${user.id}`).length && !(await tx`SELECT 1 FROM organizers WHERE id=${event.organizer_id} AND owner_user_id=${user.id}`).length) {
         throw notFound("イベントが見つかりません");
       }
@@ -66,7 +67,11 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
   .delete("/registration", async ({ params, headers }) => {
     const user = (await getCurrentUser(headers.authorization))!;
     const registration = await sqlClient.begin(async (tx) => {
-      await tx`SELECT id FROM events WHERE id=${params.eventId} FOR UPDATE`;
+      const [event] = await tx`SELECT id,status,start_at,organizer_id FROM events WHERE id=${params.eventId} FOR UPDATE`;
+      if (!event) throw notFound("イベントが見つかりません");
+      if (event.status === "completed" || new Date(event.start_at as string) <= new Date()) {
+        throw new ApiError(422, "BUSINESS_RULE_ERROR", "開催済みのイベントはキャンセルできません");
+      }
       const [current] = await tx`SELECT * FROM registrations
         WHERE event_id=${params.eventId} AND user_id=${user.id} AND status<>'cancelled' FOR UPDATE`;
       if (!current) throw notFound("有効な申込が見つかりません");
@@ -85,7 +90,8 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
         VALUES (${user.id},'registration.cancel','registration',${current.id})`;
       await notifyRegistration(tx, { userId: user.id, eventId: params.eventId,
         title: "申込みをキャンセルしました", message: "参加申込みのキャンセルを受け付けました。" });
-      if (previousStatus === "confirmed" || previousStatus === "pending") {
+      const organizerActive = (await tx`SELECT 1 FROM organizers WHERE id=${event.organizer_id} AND status='active'`).length > 0;
+      if (event.status === "published" && organizerActive && (previousStatus === "confirmed" || previousStatus === "pending")) {
         const [next] = await tx`SELECT * FROM registrations WHERE event_id=${params.eventId} AND status='waitlisted'
           ORDER BY waitlist_position,applied_at FOR UPDATE SKIP LOCKED LIMIT 1`;
         if (next) {
