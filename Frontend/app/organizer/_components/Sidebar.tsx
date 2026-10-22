@@ -26,14 +26,17 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex min-h-screen w-65 flex-col bg-bg-accent-darkblue p-4 text-fg-inverse-primary">
+    <nav className="sticky top-0 flex h-screen w-65 shrink-0 flex-col self-start bg-bg-accent-darkblue p-4 text-fg-inverse-primary">
       <div className="flex items-center gap-2 mb-16 px-3 font-bold">
         <div className="text-[36px] text-fg-brand-primary">N</div>
         <div className="text-[24px]">NexTech</div>
       </div>
-      <ul className="flex flex-1 flex-col items-center space-y-2">
+      <ul className="flex flex-1 flex-col items-center space-y-2 overflow-y-auto">
         {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            item.href === "/organizer"
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <li key={item.href}>
