@@ -33,7 +33,10 @@ export default function Sidebar() {
       </div>
       <ul className="flex flex-1 flex-col items-center space-y-2">
         {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            item.href === "/organizer"
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <li key={item.href}>
