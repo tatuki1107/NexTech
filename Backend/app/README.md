@@ -123,3 +123,25 @@ FrontendのlocalStorage保存からの移行・実際のAPI接続は別作業で
 
 これらの回帰テストは `test/regressions.integration.test.ts` に含まれます。
 DB構造・既存データの変更や追加マイグレーションはありません。
+
+## 要件定義書への対応（API v1.3）
+
+要件5.2〜5.8の対応表・権限・推薦/集計の定義は
+[要件とAPIの対応](../../docs/API_REQUIREMENTS.md) を参照してください。
+
+- `PATCH /api/v1/events/:eventId/status`: 主催者による自組織イベントの公開状態変更
+- `GET /api/v1/me/recommended-events`: 参加履歴の主催者・タグに関連する後継イベント
+- `/api/v1/admin/organizers`・`/api/v1/admin/registrations`: 運営向け横断検索・詳細
+- `PATCH /api/v1/admin/organizers/:organizerId/status`: 理由付きの停止・復帰
+- `POST /api/v1/admin/reviews`・`GET /api/v1/admin/moderation-actions`: 確認済み記録・運営履歴
+- `/api/v1/admin/{events|organizers|registrations}/:id/history`: 対象別履歴
+- `/api/v1/admin/analytics/monthly-participants`・`popular-organizers`・`breakdown`: 推移・人気主催者・軸別集計
+
+キーワード検索は主催者名も対象とし、参加者管理では申込番号でも検索できます。
+申込締切未設定のレスポンスは `null` です。日付検索・集計は東京時間、待機順位は現在順位です。
+APIの操作数は57です。Frontendの接続・本番運用の設定は含みません。
+
+イベント編集には取得済みの `Event.version` を `expectedVersion` として必ず送ってください。
+古い版は409 `VERSION_CONFLICT`、未指定は400です。増員時は待機者を先着順に繰り上げます。
+認証は論理削除済みアカウントを拒否し、IP取得には転送ヘッダーではなくソケット接続元を使います。
+プロキシ配下と複数プロセスでのレート制限の制約も、上記対応表の「編集・認証の安全性」を参照してください。

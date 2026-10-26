@@ -4,12 +4,17 @@ import { getCurrentUser, toPublicUser } from "../lib/auth";
 import { notFound } from "../lib/errors";
 import { pagination, UUID_PATTERN } from "../lib/validation";
 import { queryPage } from "../db/pagination";
+import { WAITLIST_RANK_SQL } from "../services/registrations";
 
 export const meRoutes = new Elysia({ prefix: "/me" })
-  .get("", async ({ headers }) => ({ data: toPublicUser((await getCurrentUser(headers.authorization))!) }))
-  .patch("", async ({ headers, body }) => {
-    const user = (await getCurrentUser(headers.authorization))!;
-    const [updated] = await sqlClient`UPDATE users SET
+  .get("", async ({ headers }) => ({
+    data: toPublicUser((await getCurrentUser(headers.authorization))!),
+  }))
+  .patch(
+    "",
+    async ({ headers, body }) => {
+      const user = (await getCurrentUser(headers.authorization))!;
+      const [updated] = await sqlClient`UPDATE users SET
       display_name=COALESCE(${body.displayName ?? null},display_name),
       full_name=CASE WHEN ${body.fullName !== undefined} THEN ${body.fullName ?? null} ELSE full_name END,
       profile_text=CASE WHEN ${body.profileText !== undefined} THEN ${body.profileText ?? null} ELSE profile_text END,
@@ -17,21 +22,36 @@ export const meRoutes = new Elysia({ prefix: "/me" })
       updated_at=now() WHERE id=${user.id}
       RETURNING id,email,display_name AS "displayName",full_name AS "fullName",profile_text AS "profileText",
         avatar_url AS "avatarUrl",status`;
-    return { data: toPublicUser({ ...updated, roles: user.roles } as typeof user) };
-  }, { body: t.Object({
-    displayName: t.Optional(t.String({ minLength: 1, maxLength: 80 })), fullName: t.Optional(t.Nullable(t.String({ maxLength: 100 }))),
-    profileText: t.Optional(t.Nullable(t.String({ maxLength: 2000 }))), avatarUrl: t.Optional(t.Nullable(t.String({ format: "uri", maxLength: 2000 }))),
-  }) })
-  .get("/registrations", async ({ headers, query }) => {
-    const user = (await getCurrentUser(headers.authorization))!;
-    const page = pagination(query.page, query.perPage);
-    const viewClause: Record<string, string> = {
-      upcoming: "AND e.start_at >= now() AND r.status <> 'cancelled'", past: "AND e.start_at < now()",
-      waitlisted: "AND r.status='waitlisted'", cancelled: "AND r.status='cancelled'",
-    };
-    const clause = query.view ? viewClause[query.view] ?? "" : "";
-    return queryPage(`SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
-      r.waitlist_position AS "waitlistPosition",r.applied_at AS "appliedAt",r.confirmed_at AS "confirmedAt",
+      return {
+        data: toPublicUser({ ...updated, roles: user.roles } as typeof user),
+      };
+    },
+    {
+      body: t.Object({
+        displayName: t.Optional(t.String({ minLength: 1, maxLength: 80 })),
+        fullName: t.Optional(t.Nullable(t.String({ maxLength: 100 }))),
+        profileText: t.Optional(t.Nullable(t.String({ maxLength: 2000 }))),
+        avatarUrl: t.Optional(
+          t.Nullable(t.String({ format: "uri", maxLength: 2000 })),
+        ),
+      }),
+    },
+  )
+  .get(
+    "/registrations",
+    async ({ headers, query }) => {
+      const user = (await getCurrentUser(headers.authorization))!;
+      const page = pagination(query.page, query.perPage);
+      const viewClause: Record<string, string> = {
+        upcoming: "AND e.start_at >= now() AND r.status <> 'cancelled'",
+        past: "AND e.start_at < now()",
+        waitlisted: "AND r.status='waitlisted'",
+        cancelled: "AND r.status='cancelled'",
+      };
+      const clause = query.view ? (viewClause[query.view] ?? "") : "";
+      return queryPage(
+        `SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
+      ${WAITLIST_RANK_SQL} AS "waitlistPosition",r.applied_at AS "appliedAt",r.confirmed_at AS "confirmedAt",
       r.cancelled_at AS "cancelledAt",r.checked_in_at AS "checkedInAt",
       jsonb_build_object('id',e.id,'title',e.title,'summary',e.summary,'format',e.format,'venueName',e.venue_name,
         'startAt',e.start_at,'endAt',e.end_at,'capacity',e.capacity,
@@ -45,30 +65,71 @@ export const meRoutes = new Elysia({ prefix: "/me" })
         'registrationStatus',CASE WHEN r.status='cancelled' THEN NULL ELSE r.status END) AS event,
       count(*) OVER()::int AS total FROM registrations r JOIN events e ON e.id=r.event_id
       JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
-      WHERE r.user_id=$1 ${clause} ORDER BY e.start_at DESC,r.id`, [user.id], page);
-  }, { query: t.Object({
-    view: t.Optional(t.Union([t.Literal("upcoming"),t.Literal("past"),t.Literal("waitlisted"),t.Literal("cancelled")])),
-    page: t.Optional(t.Numeric()), perPage: t.Optional(t.Numeric()),
-  }) })
-  .put("/favorite-organizers/:organizerId", async ({ headers, params, set }) => {
-    const user = (await getCurrentUser(headers.authorization))!;
-    if (!(await sqlClient`SELECT 1 FROM organizers WHERE id=${params.organizerId} AND status='active'`).length) throw notFound("主催者が見つかりません");
-    await sqlClient`INSERT INTO user_favorite_organizers (user_id,organizer_id) VALUES (${user.id},${params.organizerId}) ON CONFLICT DO NOTHING`;
-    set.status = 204;
-  }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }) })
-  .delete("/favorite-organizers/:organizerId", async ({ headers, params, set }) => {
-    const user = (await getCurrentUser(headers.authorization))!;
-    await sqlClient`DELETE FROM user_favorite_organizers WHERE user_id=${user.id} AND organizer_id=${params.organizerId}`;
-    set.status = 204;
-  }, { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }) })
-  .put("/favorite-categories/:categoryId", async ({ headers, params, set }) => {
-    const user = (await getCurrentUser(headers.authorization))!;
-    if (!(await sqlClient`SELECT 1 FROM categories WHERE id=${params.categoryId} AND status='active'`).length) throw notFound("カテゴリが見つかりません");
-    await sqlClient`INSERT INTO user_favorite_categories (user_id,category_id) VALUES (${user.id},${params.categoryId}) ON CONFLICT DO NOTHING`;
-    set.status = 204;
-  }, { params: t.Object({ categoryId: t.String({ pattern: UUID_PATTERN }) }) })
-  .delete("/favorite-categories/:categoryId", async ({ headers, params, set }) => {
-    const user = (await getCurrentUser(headers.authorization))!;
-    await sqlClient`DELETE FROM user_favorite_categories WHERE user_id=${user.id} AND category_id=${params.categoryId}`;
-    set.status = 204;
-  }, { params: t.Object({ categoryId: t.String({ pattern: UUID_PATTERN }) }) });
+      WHERE r.user_id=$1 ${clause} ORDER BY e.start_at DESC,r.id`,
+        [user.id],
+        page,
+      );
+    },
+    {
+      query: t.Object({
+        view: t.Optional(
+          t.Union([
+            t.Literal("upcoming"),
+            t.Literal("past"),
+            t.Literal("waitlisted"),
+            t.Literal("cancelled"),
+          ]),
+        ),
+        page: t.Optional(t.Numeric()),
+        perPage: t.Optional(t.Numeric()),
+      }),
+    },
+  )
+  .put(
+    "/favorite-organizers/:organizerId",
+    async ({ headers, params, set }) => {
+      const user = (await getCurrentUser(headers.authorization))!;
+      if (
+        !(
+          await sqlClient`SELECT 1 FROM organizers WHERE id=${params.organizerId} AND status='active'`
+        ).length
+      )
+        throw notFound("主催者が見つかりません");
+      await sqlClient`INSERT INTO user_favorite_organizers (user_id,organizer_id) VALUES (${user.id},${params.organizerId}) ON CONFLICT DO NOTHING`;
+      set.status = 204;
+    },
+    { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }) },
+  )
+  .delete(
+    "/favorite-organizers/:organizerId",
+    async ({ headers, params, set }) => {
+      const user = (await getCurrentUser(headers.authorization))!;
+      await sqlClient`DELETE FROM user_favorite_organizers WHERE user_id=${user.id} AND organizer_id=${params.organizerId}`;
+      set.status = 204;
+    },
+    { params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }) },
+  )
+  .put(
+    "/favorite-categories/:categoryId",
+    async ({ headers, params, set }) => {
+      const user = (await getCurrentUser(headers.authorization))!;
+      if (
+        !(
+          await sqlClient`SELECT 1 FROM categories WHERE id=${params.categoryId} AND status='active'`
+        ).length
+      )
+        throw notFound("カテゴリが見つかりません");
+      await sqlClient`INSERT INTO user_favorite_categories (user_id,category_id) VALUES (${user.id},${params.categoryId}) ON CONFLICT DO NOTHING`;
+      set.status = 204;
+    },
+    { params: t.Object({ categoryId: t.String({ pattern: UUID_PATTERN }) }) },
+  )
+  .delete(
+    "/favorite-categories/:categoryId",
+    async ({ headers, params, set }) => {
+      const user = (await getCurrentUser(headers.authorization))!;
+      await sqlClient`DELETE FROM user_favorite_categories WHERE user_id=${user.id} AND category_id=${params.categoryId}`;
+      set.status = 204;
+    },
+    { params: t.Object({ categoryId: t.String({ pattern: UUID_PATTERN }) }) },
+  );

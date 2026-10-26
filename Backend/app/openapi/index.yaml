@@ -1,10 +1,8 @@
 openapi: 3.0.3
 info:
   title: NexTech API
-  version: 1.2.1
-  description: |
-    エンジニア向け勉強会・イベントマッチングサービス「NexTech」のMVP向けAPI仕様。
-    イベント検索、参加申込、キャンセル待ち、主催者運営、管理者集計を対象とする。
+  version: 1.3.0
+  description: "エンジニア向け勉強会・イベントマッチングサービス「NexTech」のMVP向けAPI仕様。\nイベント検索、参加申込、キャンセル待ち、主催者運営、管理者集計を対象とする。\n"
 servers:
   - url: https://api.example.com/api/v1
     description: Production placeholder
@@ -252,18 +250,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SignupRequest'
+              $ref: "#/components/schemas/SignupRequest"
       responses:
-        '201':
+        "201":
           description: 登録成功
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
   /auth/login:
     post:
       tags:
@@ -275,16 +273,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: ログイン成功
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '401':
-          $ref: '#/components/responses/AuthRequiredError'
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
   /auth/refresh:
     post:
       tags:
@@ -294,14 +292,14 @@ paths:
       security:
         - refreshCookie: []
       responses:
-        '200':
+        "200":
           description: 更新成功。新しい更新トークンをSet-Cookieで返す。
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '401':
-          $ref: '#/components/responses/AuthRequiredError'
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
   /auth/logout:
     post:
       tags:
@@ -310,17 +308,17 @@ paths:
       description: 現在の更新トークンを失効し、Cookieを削除する。
       security: []
       responses:
-        '204':
+        "204":
           description: ログアウト成功
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
   /me:
     get:
       tags:
         - Me
       summary: 自分のユーザー情報取得
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -328,9 +326,9 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/User'
-        '401':
-          $ref: '#/components/responses/AuthRequiredError'
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
     patch:
       tags:
         - Me
@@ -340,9 +338,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProfileUpdateRequest'
+              $ref: "#/components/schemas/ProfileUpdateRequest"
       responses:
-        '200':
+        "200":
           description: 更新成功
           content:
             application/json:
@@ -350,9 +348,9 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/ValidationError'
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/ValidationError"
   /me/registrations:
     get:
       tags:
@@ -368,10 +366,10 @@ paths:
               - past
               - waitlisted
               - cancelled
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -381,50 +379,50 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Registration'
+                      $ref: "#/components/schemas/Registration"
                   pagination:
-                    $ref: '#/components/schemas/Pagination'
-  /me/favorite-organizers/{organizerId}:
+                    $ref: "#/components/schemas/Pagination"
+  "/me/favorite-organizers/{organizerId}":
     put:
       tags:
         - Me
       summary: 主催者を興味登録
       parameters:
-        - $ref: '#/components/parameters/OrganizerId'
+        - $ref: "#/components/parameters/OrganizerId"
       responses:
-        '204':
+        "204":
           description: 登録成功
-        '404':
-          $ref: '#/components/responses/NotFoundError'
+        "404":
+          $ref: "#/components/responses/NotFoundError"
     delete:
       tags:
         - Me
       summary: 主催者の興味登録解除
       parameters:
-        - $ref: '#/components/parameters/OrganizerId'
+        - $ref: "#/components/parameters/OrganizerId"
       responses:
-        '204':
+        "204":
           description: 解除成功
-  /me/favorite-categories/{categoryId}:
+  "/me/favorite-categories/{categoryId}":
     put:
       tags:
         - Me
       summary: カテゴリを興味登録
       parameters:
-        - $ref: '#/components/parameters/CategoryId'
+        - $ref: "#/components/parameters/CategoryId"
       responses:
-        '204':
+        "204":
           description: 登録成功
-        '404':
-          $ref: '#/components/responses/NotFoundError'
+        "404":
+          $ref: "#/components/responses/NotFoundError"
     delete:
       tags:
         - Me
       summary: カテゴリの興味登録解除
       parameters:
-        - $ref: '#/components/parameters/CategoryId'
+        - $ref: "#/components/parameters/CategoryId"
       responses:
-        '204':
+        "204":
           description: 解除成功
   /categories:
     get:
@@ -433,7 +431,7 @@ paths:
       summary: カテゴリ一覧取得
       security: []
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -443,7 +441,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Category'
+                      $ref: "#/components/schemas/Category"
   /tags:
     get:
       tags:
@@ -457,7 +455,7 @@ paths:
             type: string
             maxLength: 80
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -467,13 +465,13 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Tag'
+                      $ref: "#/components/schemas/Tag"
   /events:
     get:
       tags:
         - Events
       summary: 公開イベント検索
-      description: 有効な主催者の公開イベントのみ取得する。範囲外ページでもpagination.totalは絞り込み後の総件数を返す。
+      description: 有効な主催者の公開イベントを東京時間の開催日で検索する。keywordはイベント名・概要・主催者名の部分一致。%と_は文字として扱う。範囲外ページでも総件数を維持する。
       security: []
       parameters:
         - name: keyword
@@ -491,7 +489,7 @@ paths:
           schema:
             type: string
             format: date
-        - $ref: '#/components/parameters/CategoryIdQuery'
+        - $ref: "#/components/parameters/CategoryIdQuery"
         - name: tagIds
           in: query
           description: カンマ区切りのUUID。いずれかのタグに一致するイベントを取得する。
@@ -505,16 +503,22 @@ paths:
         - name: format
           in: query
           schema:
-            $ref: '#/components/schemas/EventFormat'
+            $ref: "#/components/schemas/EventFormat"
         - name: hasCapacity
           in: query
           description: trueは空席あり、falseは満席のイベントだけを返す。
           schema:
             type: boolean
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: organizerName
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: 主催者名の部分一致
       responses:
-        '200':
+        "200":
           description: 検索成功
           content:
             application/json:
@@ -524,19 +528,19 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/EventListItem'
+                      $ref: "#/components/schemas/EventListItem"
                   pagination:
-                    $ref: '#/components/schemas/Pagination'
-  /events/{eventId}:
+                    $ref: "#/components/schemas/Pagination"
+  "/events/{eventId}":
     get:
       tags:
         - Events
       summary: イベント詳細取得
       security: []
       parameters:
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/EventId"
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -544,23 +548,31 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Event'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
+                    $ref: "#/components/schemas/Event"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
     patch:
       tags:
         - Organizers
       summary: イベント編集
       parameters:
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EventUpdateRequest'
+              $ref: "#/components/schemas/EventUpdateRequest"
       responses:
-        '200':
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: 読み込んだ版が古い（VERSION_CONFLICT）。再取得してから再編集する。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "200":
           description: 更新成功
           content:
             application/json:
@@ -568,60 +580,66 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Event'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-  /events/{eventId}/registrations:
+                    $ref: "#/components/schemas/Event"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  "/events/{eventId}/registrations":
     post:
       tags:
         - Events
       summary: イベント申込
       parameters:
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegistrationApplyRequest'
+              $ref: "#/components/schemas/RegistrationApplyRequest"
       responses:
-        '201':
+        "201":
           description: 申込成功
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegistrationApplyResponse'
-        '401':
-          $ref: '#/components/responses/AuthRequiredError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
-        '410':
+                $ref: "#/components/schemas/RegistrationApplyResponse"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "410":
           description: 申込期間外
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     get:
       tags:
         - Organizers
       summary: 参加者一覧取得
       parameters:
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/EventId"
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/RegistrationStatus'
+            $ref: "#/components/schemas/RegistrationStatus"
         - name: keyword
           in: query
-          description: 氏名、表示名、メールアドレス検索
+          description: 氏名・メール・申込番号の部分一致
           schema:
             type: string
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: registrationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: 申込番号（UUID）の完全一致
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -631,21 +649,21 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Registration'
+                      $ref: "#/components/schemas/Registration"
                   pagination:
-                    $ref: '#/components/schemas/Pagination'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-  /events/{eventId}/registration:
+                    $ref: "#/components/schemas/Pagination"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+  "/events/{eventId}/registration":
     delete:
       tags:
         - Events
       summary: 自分の申込キャンセル
       description: 開始前の申込のみキャンセル可能。中止・下書き状態・主催者停止中でもキャンセルできるが、待機者の繰り上げは行わない。開催済み・受付済みは422。
       parameters:
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/EventId"
       responses:
-        '200':
+        "200":
           description: キャンセル成功
           content:
             application/json:
@@ -653,20 +671,20 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Registration'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-          '422':
-            $ref: '#/components/responses/BusinessRuleError'
-  /events/{eventId}/recruitment-summary:
+                    $ref: "#/components/schemas/Registration"
+        "404":
+          "422":
+            $ref: "#/components/responses/BusinessRuleError"
+          $ref: "#/components/responses/NotFoundError"
+  "/events/{eventId}/recruitment-summary":
     get:
       tags:
         - Organizers
       summary: 募集状況取得
       parameters:
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/EventId"
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -674,26 +692,26 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/RecruitmentSummary'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-  /events/{eventId}/registrations/{registrationId}/check-in:
+                    $ref: "#/components/schemas/RecruitmentSummary"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+  "/events/{eventId}/registrations/{registrationId}/check-in":
     post:
       tags:
         - Organizers
       summary: 当日受付
       description: 有効な主催者の公開中イベントで、参加確定済みの申込のみ受付できる。イベント行をロックし、中止処理との競合を防ぐ。
       parameters:
-        - $ref: '#/components/parameters/EventId'
-        - $ref: '#/components/parameters/RegistrationId'
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/RegistrationId"
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CheckInRequest'
+              $ref: "#/components/schemas/CheckInRequest"
       responses:
-        '200':
+        "200":
           description: 受付成功
           content:
             application/json:
@@ -701,9 +719,9 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Registration'
-        '422':
-          $ref: '#/components/responses/BusinessRuleError'
+                    $ref: "#/components/schemas/Registration"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
   /organizers:
     post:
       tags:
@@ -714,9 +732,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OrganizerCreateRequest'
+              $ref: "#/components/schemas/OrganizerCreateRequest"
       responses:
-        '201':
+        "201":
           description: 作成成功
           content:
             application/json:
@@ -724,19 +742,19 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Organizer'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-  /organizers/{organizerId}:
+                    $ref: "#/components/schemas/Organizer"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  "/organizers/{organizerId}":
     get:
       tags:
         - Organizers
       summary: 主催者詳細取得
       security: []
       parameters:
-        - $ref: '#/components/parameters/OrganizerId'
+        - $ref: "#/components/parameters/OrganizerId"
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -744,23 +762,23 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Organizer'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
+                    $ref: "#/components/schemas/Organizer"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
     patch:
       tags:
         - Organizers
       summary: 主催者情報更新
       parameters:
-        - $ref: '#/components/parameters/OrganizerId'
+        - $ref: "#/components/parameters/OrganizerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OrganizerUpdateRequest'
+              $ref: "#/components/schemas/OrganizerUpdateRequest"
       responses:
-        '200':
+        "200":
           description: 更新成功
           content:
             application/json:
@@ -768,24 +786,24 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Organizer'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-  /organizers/{organizerId}/events:
+                    $ref: "#/components/schemas/Organizer"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+  "/organizers/{organizerId}/events":
     get:
       tags:
         - Organizers
       summary: 主催者のイベント一覧
       parameters:
-        - $ref: '#/components/parameters/OrganizerId'
+        - $ref: "#/components/parameters/OrganizerId"
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/EventStatus'
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+            $ref: "#/components/schemas/EventStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
       responses:
-        '200':
+        "200":
           description: 取得成功
           content:
             application/json:
@@ -795,23 +813,23 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/EventListItem'
+                      $ref: "#/components/schemas/EventListItem"
                   pagination:
-                    $ref: '#/components/schemas/Pagination'
+                    $ref: "#/components/schemas/Pagination"
     post:
       tags:
         - Organizers
       summary: イベント作成
       parameters:
-        - $ref: '#/components/parameters/OrganizerId'
+        - $ref: "#/components/parameters/OrganizerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EventCreateRequest'
+              $ref: "#/components/schemas/EventCreateRequest"
       responses:
-        '201':
+        "201":
           description: 作成成功
           content:
             application/json:
@@ -819,11 +837,11 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Event'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
+                    $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
   /admin/events:
     get:
       tags:
@@ -833,33 +851,67 @@ paths:
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/EventStatus'
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+            $ref: "#/components/schemas/EventStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: organizerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: 東京時間の開催日・開始
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: 東京時間の開催日・終了
       responses:
-        '200':
-          description: 取得成功
+        "200":
+          description: 成功
           content:
             application/json:
               schema:
                 type: object
+                required:
+                  - data
+                  - pagination
                 properties:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/EventListItem'
+                      allOf:
+                        - $ref: "#/components/schemas/Event"
+                        - type: object
+                          required:
+                            - reviewedAt
+                          properties:
+                            reviewedAt:
+                              type: string
+                              format: date-time
+                              nullable: true
                   pagination:
-                    $ref: '#/components/schemas/Pagination'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-  /admin/events/{eventId}/status:
+                    $ref: "#/components/schemas/Pagination"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+  "/admin/events/{eventId}/status":
     patch:
       tags:
         - Admin
       summary: イベント公開状態変更
       description: 中止済みイベントは中止状態のままとし、下書き経由の再公開も拒否する。停止中の主催者のイベントは公開できない。
       parameters:
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
@@ -870,12 +922,12 @@ paths:
                 - status
               properties:
                 status:
-                  $ref: '#/components/schemas/EventStatus'
+                  $ref: "#/components/schemas/EventStatus"
                 reason:
                   type: string
                   maxLength: 1000
       responses:
-        '200':
+        "200":
           description: 更新成功
           content:
             application/json:
@@ -883,39 +935,90 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Event'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-          '422':
-            $ref: '#/components/responses/BusinessRuleError'
+                    $ref: "#/components/schemas/Event"
+        "403":
+          "422":
+            $ref: "#/components/responses/BusinessRuleError"
+          $ref: "#/components/responses/ForbiddenError"
   /admin/analytics/monthly-events:
     get:
       tags:
         - Admin
-      summary: 月別イベント開催数
+      summary: 月別開催数
+      description: 東京時間の開催日で集計し、published/completedのみを対象にする。期間は最大3660日。registrationCountはキャンセル以外（待機含む）、confirmedCountは枠使用状態、attendedCountはchecked_in。applicationRateはregistrationCount/定員合計で、待機を含むため1を超える場合がある。 該当イベントがない月も0件で返す。
       parameters:
-        - $ref: '#/components/parameters/FromDate'
-        - $ref: '#/components/parameters/ToDate'
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: organizerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          schema:
+            $ref: "#/components/schemas/EventFormat"
       responses:
-        '200':
-          description: 集計成功
+        "200":
+          description: 成功
           content:
             application/json:
               schema:
                 type: object
+                required:
+                  - data
                 properties:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/MonthlyEventMetric'
+                      type: object
+                      required:
+                        - month
+                        - eventCount
+                      properties:
+                        month:
+                          type: string
+                        eventCount:
+                          type: integer
+                          minimum: 0
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
   /admin/analytics/popular-categories:
     get:
       tags:
         - Admin
-      summary: 人気カテゴリ集計
+      summary: 人気カテゴリランキング
+      description: 東京時間の開催日で集計し、published/completedのみを対象にする。期間は最大3660日。registrationCountはキャンセル以外（待機含む）、confirmedCountは枠使用状態、attendedCountはchecked_in。applicationRateはregistrationCount/定員合計で、待機を含むため1を超える場合がある。
       parameters:
-        - $ref: '#/components/parameters/FromDate'
-        - $ref: '#/components/parameters/ToDate'
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: organizerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          schema:
+            $ref: "#/components/schemas/EventFormat"
         - name: metric
           in: query
           schema:
@@ -924,26 +1027,795 @@ paths:
               - events
               - registrations
               - attendance
+              - applicationRate
             default: registrations
         - name: limit
           in: query
           schema:
             type: integer
-            default: 10
             minimum: 1
             maximum: 100
+            default: 10
       responses:
-        '200':
-          description: 集計成功
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CategoryAnalytics"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/events/{eventId}/status":
+    patch:
+      tags:
+        - Organizers
+      summary: 自組織のイベントの公開状態を変更
+      description: 所属または所有する有効な主催者のイベントを公開・下書き・中止・終了へ変更する。管理者承認は不要。他組織は403。中止済みの再公開は不可。状態変更・通知・履歴を同じトランザクションで保存する。
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  $ref: "#/components/schemas/EventStatus"
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          description: 更新成功
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data:
+                    $ref: "#/components/schemas/Event"
+        "403":
+          "422":
+            $ref: "#/components/responses/BusinessRuleError"
+          $ref: "#/components/responses/ForbiddenError"
+  /me/recommended-events:
+    get:
+      tags:
+        - Me
+      summary: 参加履歴に関連する後継イベント
+      description: 過去に終了したイベントのconfirmed/checked_in履歴を基に、同じ主催者またはタグを持つ今後のイベントを開催日順で返す。キャンセル・待機・欠席履歴は推薦元にしない。公開・有効主催者・締切前に限定し、申込済みは除外する。履歴なしは空配列。参加URLは返さない。
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/PopularCategoryMetric'
+                      $ref: "#/components/schemas/RecommendedEvent"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /admin/organizers:
+    get:
+      tags:
+        - Admin
+      summary: 全主催者の検索
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - inactive
+              - suspended
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminOrganizer"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/admin/organizers/{organizerId}":
+    get:
+      tags:
+        - Admin
+      summary: 主催者の詳細
+      parameters:
+        - $ref: "#/components/parameters/OrganizerId"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AdminOrganizer"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/admin/organizers/{organizerId}/status":
+    patch:
+      tags:
+        - Admin
+      summary: 主催者の有効・停止状態を変更
+      description: 理由必須。停止で公開・新規申込・運営操作を停止する。activeへ戻すと元のイベント状態に従い再表示される。同一状態の再指定は履歴を増やさない。既存申込は削除しない。
+      parameters:
+        - $ref: "#/components/parameters/OrganizerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+                - reason
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - inactive
+                    - suspended
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - status
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      status:
+                        type: string
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/admin/organizers/{organizerId}/history":
+    get:
+      tags:
+        - Admin
+      summary: 主催者の編集・運営対応履歴
+      description: 編集操作ログと運営対応履歴を新しい順に返す。この機能導入前の未記録操作は復元しない。
+      parameters:
+        - $ref: "#/components/parameters/OrganizerId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrganizerHistory"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /admin/registrations:
+    get:
+      tags:
+        - Admin
+      summary: 参加情報の横断検索
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: eventId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: organizerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RegistrationStatus"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+          description: 氏名・メール・申込番号の部分一致
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: 東京時間の申込日・開始
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: 東京時間の申込日・終了
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminRegistration"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/admin/registrations/{registrationId}":
+    get:
+      tags:
+        - Admin
+      summary: 申込の詳細
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AdminRegistration"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/admin/registrations/{registrationId}/history":
+    get:
+      tags:
+        - Admin
+      summary: 申込状態の変更履歴
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RegistrationHistory"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/admin/events/{eventId}":
+    get:
+      tags:
+        - Admin
+      summary: 非公開・下書きを含むイベント詳細
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  "/admin/events/{eventId}/history":
+    get:
+      tags:
+        - Admin
+      summary: イベント変更履歴
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EventHistory"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /admin/reviews:
+    post:
+      tags:
+        - Admin
+      summary: 管理対象を確認済みとして記録
+      description: 確認時刻を履歴へ追加する。reviewedAtは最終確認時刻であり、その後の更新がないことを保証するフラグではない。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - targetType
+                - targetId
+              properties:
+                targetType:
+                  type: string
+                  enum:
+                    - organizer
+                    - event
+                    - registration
+                targetId:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "201":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - id
+                      - targetType
+                      - targetId
+                      - reviewedAt
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      targetType:
+                        type: string
+                      targetId:
+                        type: string
+                        format: uuid
+                      reviewedAt:
+                        type: string
+                        format: date-time
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /admin/moderation-actions:
+    get:
+      tags:
+        - Admin
+      summary: 運営対応・確認済み記録の履歴
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: targetType
+          in: query
+          schema:
+            type: string
+            enum:
+              - organizer
+              - event
+              - registration
+        - name: targetId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ModerationAction"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /admin/analytics/monthly-participants:
+    get:
+      tags:
+        - Admin
+      summary: 月別参加者・申込・受付の推移
+      description: 東京時間の開催日で集計し、published/completedのみを対象にする。期間は最大3660日。registrationCountはキャンセル以外（待機含む）、confirmedCountは枠使用状態、attendedCountはchecked_in。applicationRateはregistrationCount/定員合計で、待機を含むため1を超える場合がある。 participantCountはconfirmed/checked_inの月別ユニークユーザー数。該当なしの月も0件で返す。
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: organizerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          schema:
+            $ref: "#/components/schemas/EventFormat"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MonthlyParticipants"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /admin/analytics/popular-organizers:
+    get:
+      tags:
+        - Admin
+      summary: 人気主催者ランキング
+      description: 東京時間の開催日で集計し、published/completedのみを対象にする。期間は最大3660日。registrationCountはキャンセル以外（待機含む）、confirmedCountは枠使用状態、attendedCountはchecked_in。applicationRateはregistrationCount/定員合計で、待機を含むため1を超える場合がある。
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: organizerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          schema:
+            $ref: "#/components/schemas/EventFormat"
+        - name: metric
+          in: query
+          schema:
+            type: string
+            enum:
+              - events
+              - registrations
+              - attendance
+              - applicationRate
+            default: registrations
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrganizerAnalytics"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
+  /admin/analytics/breakdown:
+    get:
+      tags:
+        - Admin
+      summary: カテゴリ・主催者・開催形式別集計
+      description: 東京時間の開催日で集計し、published/completedのみを対象にする。期間は最大3660日。registrationCountはキャンセル以外（待機含む）、confirmedCountは枠使用状態、attendedCountはchecked_in。applicationRateはregistrationCount/定員合計で、待機を含むため1を超える場合がある。 groupBy必須。対応するcategoryId/organizerId/formatを追加する。
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: organizerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          schema:
+            $ref: "#/components/schemas/EventFormat"
+        - name: metric
+          in: query
+          schema:
+            type: string
+            enum:
+              - events
+              - registrations
+              - attendance
+              - applicationRate
+            default: events
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum:
+              - category
+              - organizer
+              - format
+          required: true
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/AnalyticsGroup"
+                        - type: object
+                          properties:
+                            categoryId:
+                              type: string
+                              format: uuid
+                            categoryName:
+                              type: string
+                            organizerId:
+                              type: string
+                              format: uuid
+                            organizerName:
+                              type: string
+                            format:
+                              $ref: "#/components/schemas/EventFormat"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
 components:
   securitySchemes:
     bearerAuth:
@@ -1025,37 +1897,37 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     AuthRequiredError:
       description: 認証が必要
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     ForbiddenError:
       description: 権限不足
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     NotFoundError:
       description: 対象が存在しない
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     ConflictError:
       description: 重複または状態競合
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
     BusinessRuleError:
       description: 業務ルール違反
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     User:
       type: object
@@ -1153,7 +2025,7 @@ components:
               type: integer
               example: 900
             user:
-              $ref: '#/components/schemas/User'
+              $ref: "#/components/schemas/User"
     ProfileUpdateRequest:
       type: object
       properties:
@@ -1219,7 +2091,7 @@ components:
         slug:
           type: string
           maxLength: 100
-          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
         description:
           type: string
           maxLength: 3000
@@ -1240,7 +2112,7 @@ components:
         slug:
           type: string
           maxLength: 100
-          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
         description:
           type: string
           maxLength: 3000
@@ -1315,7 +2187,7 @@ components:
           type: string
           nullable: true
         format:
-          $ref: '#/components/schemas/EventFormat'
+          $ref: "#/components/schemas/EventFormat"
         venueName:
           type: string
           nullable: true
@@ -1326,13 +2198,13 @@ components:
           type: string
           format: date-time
         category:
-          $ref: '#/components/schemas/Category'
+          $ref: "#/components/schemas/Category"
         organizer:
-          $ref: '#/components/schemas/Organizer'
+          $ref: "#/components/schemas/Organizer"
         tags:
           type: array
           items:
-            $ref: '#/components/schemas/Tag'
+            $ref: "#/components/schemas/Tag"
         capacity:
           type: integer
         confirmedCount:
@@ -1342,16 +2214,17 @@ components:
         registrationStatus:
           nullable: true
           allOf:
-            - $ref: '#/components/schemas/RegistrationStatus'
+            - $ref: "#/components/schemas/RegistrationStatus"
     Event:
       allOf:
-        - $ref: '#/components/schemas/EventListItem'
+        - $ref: "#/components/schemas/EventListItem"
         - type: object
           required:
             - description
             - status
             - waitlistEnabled
             - applicationDeadline
+            - version
           properties:
             description:
               type: string
@@ -1363,7 +2236,7 @@ components:
               nullable: true
               description: 参加確定者、主催者、管理者に限定して返却する
             status:
-              $ref: '#/components/schemas/EventStatus'
+              $ref: "#/components/schemas/EventStatus"
             waitlistEnabled:
               type: boolean
             applicationStartAt:
@@ -1373,10 +2246,20 @@ components:
             applicationDeadline:
               type: string
               format: date-time
+              nullable: true
             publishedAt:
               type: string
               format: date-time
               nullable: true
+            updatedAt:
+              type: string
+              format: date-time
+            createdAt:
+              type: string
+              format: date-time
+            version:
+              type: integer
+              minimum: 1
     EventCreateRequest:
       type: object
       required:
@@ -1410,7 +2293,7 @@ components:
             type: string
             format: uuid
         format:
-          $ref: '#/components/schemas/EventFormat'
+          $ref: "#/components/schemas/EventFormat"
         venueName:
           type: string
           maxLength: 160
@@ -1440,8 +2323,13 @@ components:
           format: date-time
     EventUpdateRequest:
       type: object
-      description: PATCH用の部分更新。指定された項目のみ更新する。
+      description: 部分更新。取得済みEvent.versionをexpectedVersionとして必須指定する。不一致は409 VERSION_CONFLICT。増員時は既存の待機者から繰り上げる。
+      required:
+        - expectedVersion
       properties:
+        expectedVersion:
+          type: integer
+          minimum: 1
         title:
           type: string
           minLength: 1
@@ -1462,7 +2350,7 @@ components:
             type: string
             format: uuid
         format:
-          $ref: '#/components/schemas/EventFormat'
+          $ref: "#/components/schemas/EventFormat"
         venueName:
           type: string
           maxLength: 160
@@ -1520,16 +2408,17 @@ components:
         event:
           nullable: true
           allOf:
-            - $ref: '#/components/schemas/EventListItem'
+            - $ref: "#/components/schemas/EventListItem"
         user:
           nullable: true
           allOf:
-            - $ref: '#/components/schemas/User'
+            - $ref: "#/components/schemas/User"
         status:
-          $ref: '#/components/schemas/RegistrationStatus'
+          $ref: "#/components/schemas/RegistrationStatus"
         waitlistPosition:
           type: integer
           nullable: true
+          description: 現在の待機者の中での順位（1始まり）。内部の並び順キーではない。
         appliedAt:
           type: string
           format: date-time
@@ -1571,10 +2460,11 @@ components:
               type: string
               format: uuid
             status:
-              $ref: '#/components/schemas/RegistrationStatus'
+              $ref: "#/components/schemas/RegistrationStatus"
             waitlistPosition:
               type: integer
               nullable: true
+              description: 現在のキャンセル待ち順位（1始まり）。
             message:
               type: string
     CheckInRequest:
@@ -1617,7 +2507,7 @@ components:
       properties:
         month:
           type: string
-          example: '2026-08'
+          example: "2026-08"
         eventCount:
           type: integer
     PopularCategoryMetric:
@@ -1678,7 +2568,6 @@ components:
                     type: string
                   message:
                     type: string
-
     SavedEvent:
       allOf:
         - $ref: "#/components/schemas/EventListItem"
@@ -1895,3 +2784,380 @@ components:
         unreadCount:
           type: integer
           minimum: 0
+    RecommendedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventListItem"
+        - type: object
+          required:
+            - sameOrganizer
+            - sharedTags
+          properties:
+            sameOrganizer:
+              type: boolean
+            sharedTags:
+              type: boolean
+    AdminOrganizer:
+      type: object
+      required:
+        - id
+        - ownerUserId
+        - name
+        - slug
+        - description
+        - websiteUrl
+        - contactEmail
+        - status
+        - createdAt
+        - updatedAt
+        - reviewedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerUserId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        websiteUrl:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - active
+            - inactive
+            - suspended
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+    AdminRegistration:
+      type: object
+      required:
+        - id
+        - eventId
+        - userId
+        - status
+        - waitlistPosition
+        - appliedAt
+        - confirmedAt
+        - cancelledAt
+        - checkedInAt
+        - updatedAt
+        - user
+        - event
+        - reviewedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/RegistrationStatus"
+        waitlistPosition:
+          type: integer
+          nullable: true
+          minimum: 1
+        appliedAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkedInAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+        user:
+          type: object
+          required:
+            - id
+            - email
+            - displayName
+            - fullName
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+            displayName:
+              type: string
+            fullName:
+              type: string
+              nullable: true
+        event:
+          type: object
+          required:
+            - id
+            - title
+            - organizerId
+            - startAt
+            - status
+          properties:
+            id:
+              type: string
+              format: uuid
+            title:
+              type: string
+            organizerId:
+              type: string
+              format: uuid
+            startAt:
+              type: string
+              format: date-time
+            status:
+              $ref: "#/components/schemas/EventStatus"
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ModerationAction:
+      type: object
+      required:
+        - id
+        - actorUserId
+        - targetType
+        - targetId
+        - action
+        - reason
+        - metadata
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum:
+            - organizer
+            - event
+            - registration
+        targetId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        reason:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    OrganizerHistory:
+      type: object
+      required:
+        - id
+        - actorUserId
+        - action
+        - reason
+        - metadata
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+        reason:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    EventHistory:
+      type: object
+      required:
+        - id
+        - eventId
+        - actorUserId
+        - changeType
+        - beforeData
+        - afterData
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+        changeType:
+          type: string
+        beforeData:
+          type: object
+          additionalProperties: true
+          nullable: true
+        afterData:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    RegistrationHistory:
+      type: object
+      required:
+        - id
+        - registrationId
+        - actorUserId
+        - fromStatus
+        - toStatus
+        - reason
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        registrationId:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        fromStatus:
+          type: string
+          nullable: true
+        toStatus:
+          $ref: "#/components/schemas/RegistrationStatus"
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    MonthlyParticipants:
+      type: object
+      required:
+        - month
+        - eventCount
+        - registrationCount
+        - participantCount
+        - confirmedCount
+        - attendedCount
+      properties:
+        month:
+          type: string
+        eventCount:
+          type: integer
+          minimum: 0
+        registrationCount:
+          type: integer
+          minimum: 0
+        participantCount:
+          type: integer
+          minimum: 0
+        confirmedCount:
+          type: integer
+          minimum: 0
+        attendedCount:
+          type: integer
+          minimum: 0
+    AnalyticsGroup:
+      type: object
+      required:
+        - groupId
+        - groupName
+        - eventCount
+        - registrationCount
+        - confirmedCount
+        - attendedCount
+        - capacity
+        - applicationRate
+      properties:
+        groupId:
+          type: string
+        groupName:
+          type: string
+        eventCount:
+          type: integer
+          minimum: 0
+        registrationCount:
+          type: integer
+          minimum: 0
+        confirmedCount:
+          type: integer
+          minimum: 0
+        attendedCount:
+          type: integer
+          minimum: 0
+        capacity:
+          type: integer
+          minimum: 0
+        applicationRate:
+          type: number
+          minimum: 0
+    CategoryAnalytics:
+      allOf:
+        - $ref: "#/components/schemas/AnalyticsGroup"
+        - type: object
+          required:
+            - categoryId
+            - categoryName
+          properties:
+            categoryId:
+              type: string
+              format: uuid
+            categoryName:
+              type: string
+    OrganizerAnalytics:
+      allOf:
+        - $ref: "#/components/schemas/AnalyticsGroup"
+        - type: object
+          required:
+            - organizerId
+            - organizerName
+          properties:
+            organizerId:
+              type: string
+              format: uuid
+            organizerName:
+              type: string
