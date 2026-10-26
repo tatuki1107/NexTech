@@ -77,12 +77,22 @@ export default function EventForm({
   // 下書きは作成途中でも保存できるよう、タイトルだけを必須にする
   const canSaveDraft = values.title.trim() !== "";
 
+  const navigateBack = () => {
+    // 詳細・一覧のどちらから来ても直前の画面に戻す。
+    // 履歴がない場合(直接URLを開いたとき)は一覧へ移動する
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push(LIST_PATH);
+  };
+
   const handleBack = () => {
     if (isDirty) {
       setIsLeaveDialogOpen(true);
       return;
     }
-    router.push(LIST_PATH);
+    navigateBack();
   };
 
   const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
@@ -110,7 +120,7 @@ export default function EventForm({
           >
             <path d="M15 6l-6 6 6 6" />
           </svg>
-          イベント一覧に戻る
+          {mode === "new" ? "イベント一覧に戻る" : "戻る"}
         </button>
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-fg-neutral-primary">
@@ -236,7 +246,9 @@ export default function EventForm({
             required
             maxLength={DESCRIPTION_MAX_LENGTH}
             value={values.description}
-            onChange={(event) => handleChange("description", event.target.value)}
+            onChange={(event) =>
+              handleChange("description", event.target.value)
+            }
             placeholder="イベント内容を入力"
             className="h-40 w-full resize-none rounded-xl border border-ol-neutral-primary bg-white p-4 pb-8 text-base text-fg-neutral-primary placeholder:text-fg-neutral-secondary focus:outline-2 focus:outline-fg-brand-primary"
           />
@@ -285,7 +297,7 @@ export default function EventForm({
         description="このまま戻ると、入力した内容は破棄されます。"
         confirmLabel="破棄して戻る"
         cancelLabel="編集を続ける"
-        onConfirm={() => router.push(LIST_PATH)}
+        onConfirm={navigateBack}
         onCancel={() => setIsLeaveDialogOpen(false)}
       />
     </form>
