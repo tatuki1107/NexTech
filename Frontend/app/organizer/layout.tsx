@@ -8,7 +8,7 @@ export default function OrganizerLayout({
   return (
     <div className="flex">
       <Sidebar />
-      <main className="flex-1 p-6">{children}</main>
+      <main className="flex-1 px-10 py-12">{children}</main>
     </div>
   );
 }
