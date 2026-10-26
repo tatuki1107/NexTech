@@ -2,6 +2,7 @@ import { sqlClient } from "../db";
 import { ApiError, notFound } from "../lib/errors";
 import { notifyPublishedEvent, notifyRegistration } from "./notifications";
 import { promoteWaitlist } from "./registrations";
+import { validateEventContent } from "./event-validation";
 
 type EventStatus = "draft" | "published" | "cancelled" | "completed";
 
@@ -16,6 +17,7 @@ export async function changeEventStatus(
     const [current] =
       await tx`SELECT * FROM events WHERE id=${eventId} FOR UPDATE`;
     if (!current) throw notFound("イベントが見つかりません");
+    validateEventContent({ ...current, status });
     const [organizer] =
       await tx`SELECT status FROM organizers WHERE id=${current.organizer_id} FOR SHARE`;
     if (

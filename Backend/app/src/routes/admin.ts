@@ -48,7 +48,7 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
       return queryPage(
         `${EVENT_SELECT_SQL},NULL::text AS "registrationStatus",count(*) OVER()::int AS total,
     (SELECT max(m.created_at) FROM moderation_actions m WHERE m.target_type='event' AND m.target_id=e.id AND m.action='reviewed') AS "reviewedAt"
-    FROM events e JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
+    FROM events e LEFT JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
     ${clauses.length ? "WHERE " + clauses.join(" AND ") : ""} ORDER BY e.created_at DESC,e.id`,
         values,
         pagination(query.page, query.perPage),

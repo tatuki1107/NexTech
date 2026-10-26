@@ -128,7 +128,6 @@ import {
         .notNull()
         .references(() => organizers.id, { onDelete: "restrict" }),
         categoryId: uuid("category_id")
-        .notNull()
         .references(() => categories.id, { onDelete: "restrict" }),
         createdBy: uuid("created_by")
         .notNull()
@@ -136,14 +135,15 @@ import {
         title: varchar("title", { length: 200 }).notNull(),
         summary: varchar("summary", { length: 500 }),
         description: text("description").notNull(),
-        format: varchar("format", { length: 32 }).notNull(),
+        participationConditions: text("participation_conditions"),
+        format: varchar("format", { length: 32 }),
         venueName: varchar("venue_name", { length: 200 }),
         address: text("address"),
         onlineUrl: text("online_url"),
-        startAt: timestamp("start_at", { withTimezone: true }).notNull(),
-        endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+        startAt: timestamp("start_at", { withTimezone: true }),
+        endAt: timestamp("end_at", { withTimezone: true }),
         timezone: varchar("timezone", { length: 64 }).notNull(),
-        capacity: integer("capacity").notNull(),
+        capacity: integer("capacity"),
         waitlistEnabled: boolean("waitlist_enabled").notNull().default(false),
         applicationStartAt: timestamp("application_start_at", {
         withTimezone: true,
@@ -188,7 +188,7 @@ import {
         ),
         check(
             "events_format_location_valid",
-            sql`(
+            sql`${table.status} in ('draft', 'cancelled') or (
                 (${table.format} = 'online' and nullif(trim(${table.onlineUrl}), '') is not null)
                 or (${table.format} = 'offline' and nullif(trim(${table.venueName}), '') is not null)
                 or (
@@ -196,6 +196,14 @@ import {
                     and nullif(trim(${table.onlineUrl}), '') is not null
                     and nullif(trim(${table.venueName}), '') is not null
                 )
+            )`,
+        ),
+        check(
+            "events_publish_fields_required",
+            sql`${table.status} not in ('published', 'completed') or (
+                ${table.categoryId} is not null and ${table.format} is not null
+                and ${table.startAt} is not null and ${table.endAt} is not null
+                and ${table.capacity} is not null
             )`,
         ),
         check("events_time_order", sql`${table.endAt} > ${table.startAt}`),
