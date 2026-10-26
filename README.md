@@ -4,6 +4,7 @@
 
 - [Contributing Guide](CONTRIBUTING.md)
 - [Coding Rules](docs/CODING_RULES.md)
+- [設計・API資料一覧](docs/README.md)
 
 ## 開発環境
 

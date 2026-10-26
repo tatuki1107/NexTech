@@ -1,0 +1,8 @@
+apis:
+  nextech@v1:
+    root: ./index.yaml
+extends:
+  - recommended
+rules:
+  operation-operationId: off
+  security-defined: warn
