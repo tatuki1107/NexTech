@@ -18,6 +18,7 @@ const ranking = {
     t.Union([
       t.Literal("events"),
       t.Literal("registrations"),
+      t.Literal("participants"),
       t.Literal("attendance"),
       t.Literal("applicationRate"),
     ]),

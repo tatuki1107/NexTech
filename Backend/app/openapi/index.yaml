@@ -696,6 +696,32 @@ paths:
         "403":
           $ref: "#/components/responses/ForbiddenError"
   "/events/{eventId}/registrations/{registrationId}/check-in":
+    delete:
+      tags:
+        - Organizers
+      summary: 当日受付の取消
+      description: 有効な主催者の公開中イベントのみ操作可能。受付済みを参加確定に戻し、受付日時・メモを消去して履歴を保存する。参加枠は維持する。受付済み以外は422。
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/RegistrationId"
+      responses:
+        "200":
+          description: 受付取消成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Registration"
+        "401":
+          $ref: "#/components/responses/AuthRequiredError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/BusinessRuleError"
     post:
       tags:
         - Organizers
@@ -1026,6 +1052,7 @@ paths:
             enum:
               - events
               - registrations
+              - participants
               - attendance
               - applicationRate
             default: registrations
@@ -1138,6 +1165,18 @@ paths:
         - Admin
       summary: 全主催者の検索
       parameters:
+        - name: from
+          in: query
+          description: 主催者作成日の下限（東京時間、当日を含む）
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: 主催者作成日の上限（東京時間、当日を含む）
+          schema:
+            type: string
+            format: date
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PerPage"
         - name: keyword
@@ -1694,6 +1733,7 @@ paths:
             enum:
               - events
               - registrations
+              - participants
               - attendance
               - applicationRate
             default: registrations
@@ -1758,6 +1798,7 @@ paths:
             enum:
               - events
               - registrations
+              - participants
               - attendance
               - applicationRate
             default: events
@@ -2168,6 +2209,7 @@ components:
         - completed
     EventListItem:
       type: object
+      description: 主催者・管理者が取得する未完成の下書きではformat・startAt・endAt・capacity・categoryがnullになる。公開イベントでは入力済み。
       required:
         - id
         - title
@@ -2187,18 +2229,24 @@ components:
           type: string
           nullable: true
         format:
-          $ref: "#/components/schemas/EventFormat"
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/EventFormat"
         venueName:
           type: string
           nullable: true
         startAt:
           type: string
           format: date-time
+          nullable: true
         endAt:
           type: string
           format: date-time
+          nullable: true
         category:
-          $ref: "#/components/schemas/Category"
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Category"
         organizer:
           $ref: "#/components/schemas/Organizer"
         tags:
@@ -2207,6 +2255,7 @@ components:
             $ref: "#/components/schemas/Tag"
         capacity:
           type: integer
+          nullable: true
         confirmedCount:
           type: integer
         waitlistCount:
@@ -2228,6 +2277,10 @@ components:
           properties:
             description:
               type: string
+            participationConditions:
+              type: string
+              nullable: true
+              maxLength: 10000
             address:
               type: string
               nullable: true
@@ -2262,27 +2315,25 @@ components:
               minimum: 1
     EventCreateRequest:
       type: object
+      description: 下書きを作成する。タイトルだけで保存可能。未指定の説明は空文字、日時・カテゴリ・形式・定員はnull、待機受付はfalse。公開時に説明・カテゴリ・形式・日時・定員・開催場所を検証する。締切なしの公開も可能。
       required:
         - title
-        - description
-        - categoryId
-        - format
-        - startAt
-        - endAt
-        - capacity
-        - waitlistEnabled
-        - applicationDeadline
       properties:
         title:
           type: string
           minLength: 1
           maxLength: 160
+          pattern: '\S'
         summary:
           type: string
           maxLength: 300
         description:
           type: string
           minLength: 1
+        participationConditions:
+          type: string
+          nullable: true
+          maxLength: 10000
         categoryId:
           type: string
           format: uuid
@@ -2334,12 +2385,17 @@ components:
           type: string
           minLength: 1
           maxLength: 160
+          pattern: '\S'
         summary:
           type: string
           maxLength: 300
         description:
           type: string
           minLength: 1
+        participationConditions:
+          type: string
+          nullable: true
+          maxLength: 10000
         categoryId:
           type: string
           format: uuid
@@ -3108,6 +3164,7 @@ components:
         - groupName
         - eventCount
         - registrationCount
+        - participantCount
         - confirmedCount
         - attendedCount
         - capacity
@@ -3123,6 +3180,10 @@ components:
         registrationCount:
           type: integer
           minimum: 0
+        participantCount:
+          type: integer
+          minimum: 0
+          description: 当該グループ内のconfirmed/checked_inのユニークユーザー数。複数イベントへの参加を重複計上しない。
         confirmedCount:
           type: integer
           minimum: 0

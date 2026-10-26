@@ -128,6 +128,346 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       expect(result.status).toBe(201);
       return result.data;
     }
+    test("title-only drafts remain editable and hidden until complete publication", async () => {
+      const path = `/organizers/${organizerId}/events`;
+      expect(
+        (await call(path, "POST", { title: "   " }, owner.token)).status,
+      ).toBe(400);
+      const draft = await call<
+        Event & { category: unknown; startAt: unknown; capacity: unknown }
+      >(path, "POST", { title: "Incomplete draft" }, owner.token);
+      expect(draft.status).toBe(201);
+      expect(draft.data.category).toBeNull();
+      expect(draft.data.startAt).toBeNull();
+      expect(draft.data.capacity).toBeNull();
+      await expect(
+        (async () => {
+          await sqlClient`UPDATE events SET status='published' WHERE id=${draft.data.id}`;
+        })(),
+      ).rejects.toThrow();
+      expect((await call(`/events/${draft.data.id}`)).status).toBe(404);
+      const drafts = await call<Event[]>(
+        path + "?status=draft",
+        "GET",
+        undefined,
+        owner.token,
+      );
+      expect(drafts.data.some((row) => row.id === draft.data.id)).toBe(true);
+      expect(
+        (
+          await call(
+            `/admin/events/${draft.data.id}`,
+            "GET",
+            undefined,
+            admin.token,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (await call(path, "POST", { title: "Forbidden" }, outsider.token))
+          .status,
+      ).toBe(403);
+      for (const status of ["published", "completed"]) {
+        expect(
+          (
+            await call(
+              `/events/${draft.data.id}/status`,
+              "PATCH",
+              { status },
+              owner.token,
+            )
+          ).status,
+        ).toBe(422);
+      }
+      const patched = await call<Event>(
+        `/events/${draft.data.id}`,
+        "PATCH",
+        {
+          expectedVersion: draft.data.version,
+          description: "Complete description",
+          categoryId,
+          format: "online",
+          startAt: "2092-03-02T10:00:00+09:00",
+          endAt: "2092-03-02T12:00:00+09:00",
+          capacity: 5,
+          participationConditions: "初心者歓迎",
+        },
+        owner.token,
+      );
+      expect(patched.status).toBe(200);
+      expect(
+        (
+          await call(
+            `/events/${draft.data.id}/status`,
+            "PATCH",
+            { status: "published" },
+            admin.token,
+          )
+        ).status,
+      ).toBe(422);
+      const complete = await call<Event>(
+        `/events/${draft.data.id}`,
+        "PATCH",
+        {
+          expectedVersion: patched.data.version,
+          onlineUrl: "https://example.test/room",
+        },
+        owner.token,
+      );
+      expect(complete.status).toBe(200);
+      expect(
+        (
+          await call(
+            `/events/${draft.data.id}/status`,
+            "PATCH",
+            { status: "published" },
+            owner.token,
+          )
+        ).status,
+      ).toBe(200);
+      const detail = await call<{ participationConditions: string }>(
+        `/events/${draft.data.id}`,
+      );
+      expect(detail.data.participationConditions).toBe("初心者歓迎");
+      expect(
+        (
+          await call(
+            `/events/${draft.data.id}`,
+            "PATCH",
+            {
+              expectedVersion: complete.data.version + 1,
+              participationConditions: null,
+            },
+            owner.token,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await call<{ participationConditions: unknown }>(
+            `/events/${draft.data.id}`,
+          )
+        ).data.participationConditions,
+      ).toBeNull();
+    });
+    test("partial draft dates are validated when the missing counterpart is supplied", async () => {
+      const draft = await call<Event>(
+        `/organizers/${organizerId}/events`,
+        "POST",
+        {
+          title: "Partial dates",
+          endAt: "2092-03-01T00:00:00Z",
+        },
+        owner.token,
+      );
+      expect(draft.status).toBe(201);
+      expect(
+        (
+          await call(
+            `/events/${draft.data.id}`,
+            "PATCH",
+            {
+              expectedVersion: draft.data.version,
+              startAt: "2092-03-02T00:00:00Z",
+            },
+            owner.token,
+          )
+        ).status,
+      ).toBe(422);
+      const [unchanged] =
+        await sqlClient`SELECT start_at,version FROM events WHERE id=${draft.data.id}`;
+      expect(unchanged.start_at).toBeNull();
+      expect(unchanged.version).toBe(draft.data.version);
+    });
+    test("organizer date search uses Tokyo creation dates and rejects inverted ranges", async () => {
+      const ids: string[] = [];
+      for (const date of [
+        "2093-01-01T14:59:59Z",
+        "2093-01-01T15:00:00Z",
+        "2093-01-02T14:59:59Z",
+        "2093-01-02T15:00:00Z",
+      ]) {
+        const created = await call<{ id: string }>(
+          "/organizers",
+          "POST",
+          {
+            name: "Date filter " + prefix,
+            slug: "date-" + crypto.randomUUID(),
+          },
+          owner.token,
+        );
+        expect(created.status).toBe(201);
+        ids.push(created.data.id);
+        await sqlClient`UPDATE organizers SET created_at=${date} WHERE id=${created.data.id}`;
+      }
+      const query = `/admin/organizers?keyword=${encodeURIComponent("Date filter " + prefix)}`;
+      const found = await call<Array<{ id: string }>>(
+        query + "&from=2093-01-02&to=2093-01-02",
+        "GET",
+        undefined,
+        admin.token,
+      );
+      expect(found.status).toBe(200);
+      expect(found.data.map((row) => row.id).sort()).toEqual(
+        ids.slice(1, 3).sort(),
+      );
+      expect(
+        (
+          await call<Array<{ id: string }>>(
+            query + "&from=2093-01-02",
+            "GET",
+            undefined,
+            admin.token,
+          )
+        ).data.length,
+      ).toBe(3);
+      expect(
+        (
+          await call<Array<{ id: string }>>(
+            query + "&to=2093-01-01",
+            "GET",
+            undefined,
+            admin.token,
+          )
+        ).data.length,
+      ).toBe(1);
+      expect(
+        (
+          await call(
+            query + "&from=2093-01-03&to=2093-01-02",
+            "GET",
+            undefined,
+            admin.token,
+          )
+        ).status,
+      ).toBe(400);
+      expect(
+        (await call(query + "&from=2093-01-02", "GET", undefined, owner.token))
+          .status,
+      ).toBe(403);
+    });
+    test("grouped participant metrics deduplicate users across events without inflating capacities", async () => {
+      const first = await event(1),
+        second = await event(2);
+      for (const created of [first, second]) {
+        await sqlClient`UPDATE events SET start_at='2094-01-01T10:00:00Z',end_at='2094-01-01T12:00:00Z' WHERE id=${created.id}`;
+        await apply(created.id, users[0]);
+      }
+      await apply(first.id, users[2]); // waitlisted: excluded from participants
+      const registration = await apply(second.id, users[1]);
+      expect(
+        (
+          await call(
+            `/events/${second.id}/registrations/${registration.registrationId}/check-in`,
+            "POST",
+            {},
+            owner.token,
+          )
+        ).status,
+      ).toBe(200);
+      const query = `from=2094-01-01&to=2094-01-01&organizerId=${organizerId}&metric=participants`;
+      for (const groupBy of ["category", "organizer", "format"]) {
+        const result = await call<
+          Array<{
+            participantCount: number;
+            registrationCount: number;
+            capacity: number;
+          }>
+        >(
+          "/admin/analytics/breakdown?" + query + "&groupBy=" + groupBy,
+          "GET",
+          undefined,
+          admin.token,
+        );
+        expect(result.status).toBe(200);
+        expect(result.data.length).toBe(1);
+        expect(result.data[0].participantCount).toBe(2);
+        expect(result.data[0].registrationCount).toBe(4);
+        expect(result.data[0].capacity).toBe(3);
+      }
+      for (const ranking of ["popular-categories", "popular-organizers"]) {
+        expect(
+          (
+            await call(
+              "/admin/analytics/" + ranking + "?" + query,
+              "GET",
+              undefined,
+              admin.token,
+            )
+          ).status,
+        ).toBe(200);
+      }
+    });
+    test("check-in cancellation preserves seats, enforces access and records exactly one concurrent correction", async () => {
+      const created = await event(1);
+      const confirmed = await apply(created.id, users[0]);
+      const waiting = await apply(created.id, users[1]);
+      const path = `/events/${created.id}/registrations/${confirmed.registrationId}/check-in`;
+      expect((await call(path, "DELETE", undefined, owner.token)).status).toBe(
+        422,
+      );
+      expect(
+        (await call(path, "POST", { note: "Checked" }, owner.token)).status,
+      ).toBe(200);
+      await sqlClient`UPDATE organizers SET status='suspended' WHERE id=${organizerId}`;
+      expect((await call(path, "DELETE", undefined, admin.token)).status).toBe(
+        422,
+      );
+      await sqlClient`UPDATE organizers SET status='active' WHERE id=${organizerId}`;
+      expect(
+        (await call(path, "DELETE", undefined, outsider.token)).status,
+      ).toBe(403);
+      expect(
+        (
+          await call(
+            `/events/${created.id}/registrations/${waiting.registrationId}/check-in`,
+            "DELETE",
+            undefined,
+            owner.token,
+          )
+        ).status,
+      ).toBe(422);
+      const other = await event();
+      expect(
+        (
+          await call(
+            `/events/${other.id}/registrations/${confirmed.registrationId}/check-in`,
+            "DELETE",
+            undefined,
+            owner.token,
+          )
+        ).status,
+      ).toBe(404);
+      const results = await Promise.all([
+        call(path, "DELETE", undefined, owner.token),
+        call(path, "DELETE", undefined, owner.token),
+      ]);
+      expect(results.map((result) => result.status).sort()).toEqual([200, 422]);
+      const [row] =
+        await sqlClient`SELECT status,checked_in_at,checkin_note FROM registrations WHERE id=${confirmed.registrationId}`;
+      expect(row.status).toBe("confirmed");
+      expect(row.checked_in_at).toBeNull();
+      expect(row.checkin_note).toBeNull();
+      const [waiter] =
+        await sqlClient`SELECT status FROM registrations WHERE id=${waiting.registrationId}`;
+      expect(waiter.status).toBe("waitlisted");
+      const [history] =
+        await sqlClient`SELECT count(*)::int AS count FROM registration_status_histories WHERE registration_id=${confirmed.registrationId} AND reason='check_in_cancelled'`;
+      expect(history.count).toBe(1);
+      const [log] =
+        await sqlClient`SELECT count(*)::int AS count FROM operation_logs WHERE resource_id=${confirmed.registrationId} AND action='registration.check_in_cancelled'`;
+      expect(log.count).toBe(1);
+      expect((await call(path, "POST", {}, owner.token)).status).toBe(200);
+      await call(
+        `/events/${created.id}/status`,
+        "PATCH",
+        { status: "cancelled" },
+        owner.token,
+      );
+      expect((await call(path, "DELETE", undefined, owner.token)).status).toBe(
+        422,
+      );
+    });
     test("legacy list returns the deadline contract required by the real top-page consumer", async () => {
       const dated = await event(),
         undated = await event();

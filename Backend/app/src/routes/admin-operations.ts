@@ -77,6 +77,21 @@ export const adminOperationsRoutes = new Elysia({ prefix: "/admin" })
       await requireAdmin(headers.authorization);
       const values: unknown[] = [],
         clauses: string[] = [];
+      if (query.from && query.to) assertDateRange(query.from, query.to);
+      if (query.from) {
+        assertDateRange(query.from, query.from);
+        values.push(query.from);
+        clauses.push(
+          `o.created_at>=($${values.length}::date::timestamp AT TIME ZONE 'Asia/Tokyo')`,
+        );
+      }
+      if (query.to) {
+        assertDateRange(query.to, query.to);
+        values.push(query.to);
+        clauses.push(
+          `o.created_at<(($${values.length}::date+interval '1 day') AT TIME ZONE 'Asia/Tokyo')`,
+        );
+      }
       if (query.status) {
         values.push(query.status);
         clauses.push(`o.status=$${values.length}`);
@@ -96,6 +111,8 @@ export const adminOperationsRoutes = new Elysia({ prefix: "/admin" })
         ...pageFields,
         status: t.Optional(organizerStatus),
         keyword: t.Optional(t.String({ maxLength: 200 })),
+        from: t.Optional(t.String({ format: "date" })),
+        to: t.Optional(t.String({ format: "date" })),
       }),
     },
   )

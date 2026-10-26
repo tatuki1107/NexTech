@@ -11,6 +11,7 @@ export type AnalyticsFilter = {
 export type AnalyticsMetric =
   | "events"
   | "registrations"
+  | "participants"
   | "attendance"
   | "applicationRate";
 export type AnalyticsAxis = "category" | "organizer" | "format";
@@ -78,9 +79,15 @@ export const groupedAnalytics = async (
     },
     format: { id: "e.format", name: "e.format", join: "" },
   }[axis];
+  const groupKey = {
+    category: "category_id",
+    organizer: "organizer_id",
+    format: "format",
+  }[axis];
   const order = {
     events: '"eventCount"',
     registrations: '"registrationCount"',
+    participants: '"participantCount"',
     attendance: '"attendedCount"',
     applicationRate: '"applicationRate"',
   }[metric];
@@ -95,7 +102,10 @@ export const groupedAnalytics = async (
   sum(e.registrations)::int AS "registrationCount",sum(e.confirmed)::int AS "confirmedCount",
   sum(e.attended)::int AS "attendedCount",sum(e.capacity)::int AS capacity,
   (sum(e.registrations)::float8/NULLIF(sum(e.capacity),0)) AS "applicationRate"
- FROM event_metrics e ${group.join} GROUP BY ${group.id},${group.name}
+ ,(SELECT count(DISTINCT r.user_id)::int FROM scoped participant_event
+   JOIN registrations r ON r.event_id=participant_event.id AND r.status IN ('confirmed','checked_in')
+   WHERE participant_event.${groupKey}=e.${groupKey}) AS "participantCount"
+ FROM event_metrics e ${group.join} GROUP BY ${group.id},${group.name},e.${groupKey}
  ORDER BY ${order} DESC,"groupName","groupId" LIMIT $${scope.values.length + 1}`,
     [...scope.values, limit],
   );

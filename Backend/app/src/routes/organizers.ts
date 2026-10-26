@@ -6,7 +6,6 @@ import {
   pagination,
   SLUG_PATTERN,
   UUID_PATTERN,
-  assertEventTimes,
   escapeLike,
 } from "../lib/validation";
 import { requireEventAccess, requireOrganizerAccess } from "../services/access";
@@ -14,11 +13,15 @@ import { EVENT_SELECT_SQL, getEventById } from "../services/events";
 import { queryPage } from "../db/pagination";
 import { WAITLIST_RANK_SQL, promoteWaitlist } from "../services/registrations";
 import { changeEventStatus } from "../services/event-status";
+import { validateEventContent } from "../services/event-validation";
 
 const eventFields = {
-  title: t.String({ minLength: 1, maxLength: 160 }),
+  title: t.String({ minLength: 1, maxLength: 160, pattern: "\\S" }),
   summary: t.Optional(t.String({ maxLength: 300 })),
   description: t.String({ minLength: 1 }),
+  participationConditions: t.Optional(
+    t.Nullable(t.String({ maxLength: 10000 })),
+  ),
   categoryId: t.String({ pattern: UUID_PATTERN }),
   tagIds: t.Optional(
     t.Array(t.String({ pattern: UUID_PATTERN }), { maxItems: 30 }),
@@ -122,7 +125,7 @@ export const organizerRoutes = new Elysia()
       const page = pagination(query.page, query.perPage);
       return queryPage(
         `${EVENT_SELECT_SQL},NULL::text AS "registrationStatus",count(*) OVER()::int AS total
-      FROM events e JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
+      FROM events e LEFT JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
       WHERE e.organizer_id=$1 ${query.status ? "AND e.status=$2" : ""} ORDER BY e.start_at DESC,e.id`,
         query.status
           ? [params.organizerId, query.status]
@@ -151,14 +154,20 @@ export const organizerRoutes = new Elysia()
     async ({ headers, params, body, set }) => {
       const user = (await getCurrentUser(headers.authorization))!;
       await requireOrganizerAccess(user, params.organizerId);
-      assertEventTimes(body.startAt, body.endAt, body.applicationDeadline);
+      validateEventContent({
+        status: "draft",
+        start_at: body.startAt,
+        end_at: body.endAt,
+        application_deadline: body.applicationDeadline,
+        application_start_at: body.applicationStartAt,
+      });
       const eventId = await sqlClient.begin(async (tx) => {
         const [event] = await tx`INSERT INTO events
         (organizer_id,category_id,created_by,title,summary,description,format,venue_name,address,online_url,
-         timezone,start_at,end_at,capacity,waitlist_enabled,application_start_at,application_deadline)
-        VALUES (${params.organizerId},${body.categoryId},${user.id},${body.title},${body.summary ?? null},${body.description},
-          ${body.format},${body.venueName ?? null},${body.address ?? null},${body.onlineUrl ?? null},'Asia/Tokyo',${body.startAt},${body.endAt},
-          ${body.capacity},${body.waitlistEnabled},${body.applicationStartAt ?? null},${body.applicationDeadline}) RETURNING id`;
+         timezone,start_at,end_at,capacity,waitlist_enabled,application_start_at,application_deadline,participation_conditions)
+        VALUES (${params.organizerId},${body.categoryId ?? null},${user.id},${body.title},${body.summary ?? null},${body.description ?? ""},
+          ${body.format ?? null},${body.venueName ?? null},${body.address ?? null},${body.onlineUrl ?? null},'Asia/Tokyo',${body.startAt ?? null},${body.endAt ?? null},
+          ${body.capacity ?? null},${body.waitlistEnabled ?? false},${body.applicationStartAt ?? null},${body.applicationDeadline ?? null},${body.participationConditions ?? null}) RETURNING id`;
         for (const tagId of body.tagIds ?? [])
           await tx`INSERT INTO event_tags (event_id,tag_id) VALUES (${event.id},${tagId}) ON CONFLICT DO NOTHING`;
         await tx`INSERT INTO event_change_logs (event_id,changed_by_user_id,change_type,after_data) VALUES (${event.id},${user.id},'created',${JSON.stringify(body)}::jsonb)`;
@@ -169,7 +178,10 @@ export const organizerRoutes = new Elysia()
     },
     {
       params: t.Object({ organizerId: t.String({ pattern: UUID_PATTERN }) }),
-      body: t.Object(eventFields),
+      body: t.Object({
+        ...t.Partial(t.Object(eventFields)).properties,
+        title: eventFields.title,
+      }),
     },
   )
   .patch(
@@ -195,14 +207,6 @@ export const organizerRoutes = new Elysia()
             "FORBIDDEN",
             "停止中の主催者は編集できません",
           );
-        const mergedStart = body.startAt ?? String(current.start_at);
-        const mergedEnd = body.endAt ?? String(current.end_at);
-        const mergedDeadline =
-          body.applicationDeadline ??
-          (current.application_deadline
-            ? String(current.application_deadline)
-            : null);
-        assertEventTimes(mergedStart, mergedEnd, mergedDeadline);
         if (body.capacity !== undefined) {
           const [{ count }] =
             await tx`SELECT count(*)::int AS count FROM registrations
@@ -218,6 +222,7 @@ export const organizerRoutes = new Elysia()
           title: "title",
           summary: "summary",
           description: "description",
+          participationConditions: "participation_conditions",
           categoryId: "category_id",
           format: "format",
           venueName: "venue_name",
@@ -233,6 +238,12 @@ export const organizerRoutes = new Elysia()
         const entries = Object.entries(body).filter(
           ([key, value]) => key in mapping && value !== undefined,
         );
+        validateEventContent({
+          ...current,
+          ...Object.fromEntries(
+            entries.map(([key, value]) => [mapping[key], value]),
+          ),
+        });
         const values: unknown[] = [];
         const sets = entries.map(([key, value]) => {
           values.push(value);
@@ -424,5 +435,58 @@ export const organizerOperationsRoutes = new Elysia({
       body: t.Optional(
         t.Object({ note: t.Optional(t.String({ maxLength: 255 })) }),
       ),
+    },
+  )
+  .delete(
+    "/registrations/:registrationId/check-in",
+    async ({ headers, params }) => {
+      const user = (await getCurrentUser(headers.authorization))!;
+      await requireEventAccess(user, params.eventId);
+      const result = await sqlClient.begin(async (tx) => {
+        // Use the same lock order and operating restrictions as check-in.
+        const [event] =
+          await tx`SELECT status,organizer_id FROM events WHERE id=${params.eventId} FOR UPDATE`;
+        if (!event) throw notFound("イベントが見つかりません");
+        if (event.status !== "published")
+          throw new ApiError(
+            422,
+            "BUSINESS_RULE_ERROR",
+            "公開中のイベントだけ受付取消できます",
+          );
+        const [organizer] =
+          await tx`SELECT status FROM organizers WHERE id=${event.organizer_id} FOR SHARE`;
+        if (organizer?.status !== "active")
+          throw new ApiError(
+            422,
+            "BUSINESS_RULE_ERROR",
+            "停止中の主催者のイベントは受付取消できません",
+          );
+        const [registration] =
+          await tx`SELECT * FROM registrations WHERE id=${params.registrationId} AND event_id=${params.eventId} FOR UPDATE`;
+        if (!registration) throw notFound("申込が見つかりません");
+        if (registration.status !== "checked_in")
+          throw new ApiError(
+            422,
+            "BUSINESS_RULE_ERROR",
+            "受付済みの申込だけ受付取消できます",
+          );
+        const [updated] =
+          await tx`UPDATE registrations SET status='confirmed',checked_in_at=NULL,checkin_note=NULL,
+          updated_at=now(),version=version+1 WHERE id=${registration.id}
+          RETURNING id,event_id AS "eventId",user_id AS "userId",status,waitlist_position AS "waitlistPosition",
+            applied_at AS "appliedAt",confirmed_at AS "confirmedAt",cancelled_at AS "cancelledAt",checked_in_at AS "checkedInAt"`;
+        await tx`INSERT INTO registration_status_histories(registration_id,from_status,to_status,changed_by_user_id,reason)
+          VALUES(${registration.id},'checked_in','confirmed',${user.id},'check_in_cancelled')`;
+        await tx`INSERT INTO operation_logs(actor_user_id,action,resource_type,resource_id)
+          VALUES(${user.id},'registration.check_in_cancelled','registration',${registration.id})`;
+        return updated;
+      });
+      return { data: result };
+    },
+    {
+      params: t.Object({
+        eventId: t.String({ pattern: UUID_PATTERN }),
+        registrationId: t.String({ pattern: UUID_PATTERN }),
+      }),
     },
   );
