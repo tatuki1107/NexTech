@@ -6,6 +6,7 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { matchesEventFilters } from "../_lib/event-search-filter";
 import { EventCard } from "@/app/(participant)/_components/EventCard";
 
 type ApiEvent = {
@@ -65,26 +66,6 @@ function formatEventDate(startAt: string, endAt: string) {
   return `${startDate.getMonth() + 1}/${startDate.getDate()}（${weekday}） ${startDate.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false })} - ${endDate.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
 }
 
-function matchesDateFilter(eventDate: Date, filter: string) {
-  if (filter === "すべて" || filter === "日付指定") return true;
-  const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
-  if (filter === "今月")
-    return (
-      eventDate.getFullYear() === now.getFullYear() &&
-      eventDate.getMonth() === now.getMonth()
-    );
-  if (filter === "今週") {
-    const endOfWeek = new Date(startOfToday);
-    endOfWeek.setDate(startOfToday.getDate() + (7 - startOfToday.getDay()));
-    return eventDate >= startOfToday && eventDate < endOfWeek;
-  }
-  return `${eventDate.getMonth() + 1}/${eventDate.getDate()}` === filter;
-}
 
 function sortEvents(events: ApiEvent[], sort: SortOption) {
   if (sort === "おすすめ") return events;
@@ -110,17 +91,19 @@ export function EventSearch() {
   );
   const [date, setDate] = useState(() => searchParams.get("date") ?? "すべて");
   const [tag, setTag] = useState("すべて");
-  const [location, setLocation] = useState(() =>
-    searchParams.get("format") === "オンライン" ? "オンライン" : "すべて",
-  );
+  const [location, setLocation] = useState("すべて");
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
   const [advancedKeyword, setAdvancedKeyword] = useState("");
   const [advancedDate, setAdvancedDate] = useState("すべて");
+  const [advancedSpecificDate, setAdvancedSpecificDate] = useState("");
   const [advancedTags, setAdvancedTags] = useState<string[]>([]);
   const [advancedFormat, setAdvancedFormat] = useState("すべて");
   const [advancedSort, setAdvancedSort] = useState<SortOption>("おすすめ");
-  const [appliedTags, setAppliedTags] = useState<string[]>([]);
-  const [appliedFormat, setAppliedFormat] = useState("すべて");
+  const [appliedTags, setAppliedTags] = useState<string[]>(() => searchParams.get("tags")?.split(",").filter(Boolean) ?? []);
+  const [appliedFormat, setAppliedFormat] = useState(() => {
+    const format = searchParams.get("format");
+    return format === "オンライン" || format === "会場開催" ? format : "すべて";
+  });
   const [appliedSort, setAppliedSort] = useState<SortOption>("おすすめ");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -153,44 +136,10 @@ export function EventSearch() {
 
   const filteredEvents = useMemo(() => {
     const matchedEvents = events.filter((event) => {
-        const searchableText =
-          `${event.title} ${event.categoryName} ${event.organizerName}`.toLowerCase();
-        const eventDate = new Date(event.startAt);
-        const eventLocation =
-          event.format === "online"
-            ? "オンライン"
-            : (event.venueName ?? "会場未定");
-        const requestedTags =
-          searchParams.get("tags")?.split(",").filter(Boolean) ?? [];
-        const requestedFormat = searchParams.get("format");
-        const hasMatchingTag =
-          requestedTags.length === 0 ||
-          requestedTags.includes(event.categoryName);
-        const hasMatchingFormat =
-          (requestedFormat !== "オンライン" &&
-            requestedFormat !== "会場開催") ||
-          (requestedFormat === "オンライン"
-            ? event.format === "online"
-            : event.format !== "online");
-        const hasAdvancedTag =
-          appliedTags.length === 0 || appliedTags.includes(event.categoryName);
-        const hasAdvancedFormat =
-          appliedFormat === "すべて" ||
-          (appliedFormat === "オンライン"
-            ? event.format === "online"
-            : event.format !== "online");
-        return (
-          searchableText.includes(keyword.toLowerCase()) &&
-          hasMatchingTag &&
-          hasMatchingFormat &&
-          hasAdvancedTag &&
-          hasAdvancedFormat &&
-          matchesDateFilter(eventDate, date) &&
+        const eventLocation = event.format === "online" ? "オンライン" : (event.venueName ?? "会場未定");
+        return matchesEventFilters(event, { keyword, date, tags: appliedTags, format: appliedFormat }) &&
           (tag === "すべて" || event.categoryName === tag) &&
-          (location === "すべて" ||
-            eventLocation === location ||
-            (location === "オンライン" && event.format === "online"))
-        );
+          (location === "すべて" || eventLocation === location);
       });
 
     return sortEvents(matchedEvents, appliedSort);
@@ -202,7 +151,6 @@ export function EventSearch() {
     events,
     keyword,
     location,
-    searchParams,
     tag,
   ]);
 
@@ -239,33 +187,23 @@ export function EventSearch() {
         : [...current, targetTag],
     );
   };
-  const advancedResultCount = events.filter((event) => {
-    const searchableText =
-      `${event.title} ${event.categoryName} ${event.organizerName}`.toLowerCase();
-    const hasMatchingTag =
-      advancedTags.length === 0 || advancedTags.includes(event.categoryName);
-    const hasMatchingFormat =
-      advancedFormat === "すべて" ||
-      (advancedFormat === "オンライン"
-        ? event.format === "online"
-        : event.format !== "online");
-    return (
-      searchableText.includes(advancedKeyword.toLowerCase()) &&
-      hasMatchingTag &&
-      hasMatchingFormat &&
-      matchesDateFilter(new Date(event.startAt), advancedDate)
-    );
-  }).length;
+  const advancedResultCount = events.filter((event) => matchesEventFilters(event, {
+    keyword: advancedKeyword,
+    date: advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
+    tags: advancedTags,
+    format: advancedFormat,
+  })).length;
   const resetAdvancedSearch = () => {
     setAdvancedKeyword("");
     setAdvancedDate("すべて");
+    setAdvancedSpecificDate("");
     setAdvancedTags([]);
     setAdvancedFormat("すべて");
     setAdvancedSort("おすすめ");
   };
   const applyAdvancedSearch = () => {
     setKeyword(advancedKeyword);
-    setDate(advancedDate);
+    setDate(advancedDate === "日付指定" ? advancedSpecificDate : advancedDate);
     setTag("すべて");
     setLocation("すべて");
     setAppliedTags(advancedTags);
@@ -290,6 +228,7 @@ export function EventSearch() {
             <span>開催日</span>
             <select value={date} onChange={selectChangeHandler(setDate)}>
               <option>すべて</option>
+              {!["すべて", ...dates].includes(date) && <option value={date}>{date}</option>}
               {dates.map((item) => (
                 <option key={item}>{item}</option>
               ))}
@@ -320,7 +259,15 @@ export function EventSearch() {
         <button
           className="advanced-search-link"
           type="button"
-          onClick={() => setIsAdvancedSearchOpen(true)}
+          onClick={() => {
+            setAdvancedKeyword(keyword);
+            setAdvancedDate(/^\d{4}-\d{2}-\d{2}$/.test(date) ? "日付指定" : date);
+            setAdvancedSpecificDate(/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "");
+            setAdvancedTags(tag === "すべて" ? appliedTags : [tag]);
+            setAdvancedFormat(location === "オンライン" ? "オンライン" : appliedFormat);
+            setAdvancedSort(appliedSort);
+            setIsAdvancedSearchOpen(true);
+          }}
         >
           <FilterAltOutlinedIcon />
           検索条件を詳しく設定
@@ -375,6 +322,12 @@ export function EventSearch() {
                   </button>
                 ))}
               </div>
+              {advancedDate === "日付指定" && (
+                <label className="filter-label-text">
+                  開催日を指定
+                  <input type="date" value={advancedSpecificDate} onChange={(event) => setAdvancedSpecificDate(event.target.value)} />
+                </label>
+              )}
               <h3>タグ</h3>
               <div className="chip-grid">
                 {tags.map((item) => (
@@ -428,6 +381,7 @@ export function EventSearch() {
               <button
                 type="button"
                 className="primary-button"
+                disabled={advancedDate === "日付指定" && !advancedSpecificDate}
                 onClick={applyAdvancedSearch}
               >
                 {advancedResultCount}件のイベントを見る

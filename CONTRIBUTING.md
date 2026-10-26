@@ -140,7 +140,9 @@ bun run build
 
 ```bash
 cd Backend/app
-bunx tsc --noEmit
+bun run typecheck
+bun test
+bun run openapi:lint
 ```
 
 加えて、次を手動で確認します。
@@ -150,5 +152,7 @@ bunx tsc --noEmit
 - UI変更はPCとスマートフォン相当の幅で確認する。
 - ブラウザとサーバーに不要なエラーや警告が出ていない。
 
-BackendのLintと自動テストは未導入です。導入後は、この完了条件と各パッケージの
-スクリプトを更新し、すべて成功することをマージ条件にします。
+DB統合テストは専用の使い捨てDBで実行します。手順は
+[Backend README](Backend/app/README.md) を参照してください。
+既存マイグレーションは書き換えず、追加マイグレーションで変更します。
+既存DBボリュームの削除・再作成は不要です。

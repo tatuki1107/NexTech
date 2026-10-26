@@ -15,6 +15,9 @@ services:
       - "3001:3001"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-nextech}:${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-nextech}
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-development-only-secret-at-least-32-chars}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
     depends_on:
       db:
         condition: service_healthy
