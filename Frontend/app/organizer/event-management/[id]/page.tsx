@@ -47,8 +47,8 @@ export default function EventDetailPage() {
           </svg>
           イベント一覧に戻る
         </Link>
-        <div className="flex items-start justify-between">
-          <div className="space-y-3">
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex flex-wrap items-center gap-4">
             <h1 className="text-3xl font-bold text-fg-neutral-primary">
               {event.title}
             </h1>
@@ -56,7 +56,7 @@ export default function EventDetailPage() {
           </div>
           <Link
             href={`/organizer/event-management/${event.id}/edit`}
-            className="flex h-14 items-center rounded-xl bg-fg-brand-primary px-8 text-sm font-bold text-fg-inverse-primary"
+            className="flex h-14 shrink-0 items-center rounded-xl bg-fg-brand-primary px-8 text-sm font-bold text-fg-inverse-primary"
           >
             イベントを編集
           </Link>
