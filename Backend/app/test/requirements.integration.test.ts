@@ -128,6 +128,90 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       expect(result.status).toBe(201);
       return result.data;
     }
+    test("legacy list returns the deadline contract required by the real top-page consumer", async () => {
+      const dated = await event(),
+        undated = await event();
+      await sqlClient`UPDATE events SET application_deadline=NULL WHERE id=${undated.id}`;
+      const response = await app.handle(
+        new Request("http://localhost/api/events"),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        events: Record<string, unknown>[];
+      };
+      // EventSearch.isApiEvent requires the property even when the deadline is absent.
+      for (const row of payload.events) {
+        expect(row).toHaveProperty("applicationDeadline");
+        expect(
+          row.applicationDeadline === null ||
+            typeof row.applicationDeadline === "string",
+        ).toBe(true);
+      }
+      const withDeadline = payload.events.find((row) => row.id === dated.id);
+      const withoutDeadline = payload.events.find(
+        (row) => row.id === undated.id,
+      );
+      expect(withDeadline).toBeDefined();
+      expect(withoutDeadline).toBeDefined();
+      expect(
+        new Date(String(withDeadline?.applicationDeadline)).toISOString(),
+      ).toBe("2090-02-01T14:00:00.000Z");
+      expect(withoutDeadline?.applicationDeadline).toBeNull();
+    });
+    for (const adminRestore of [false, true]) {
+      test(`republishing after a paused capacity increase promotes oldest waiters (${adminRestore ? "admin" : "owner"})`, async () => {
+        const created = await event(1);
+        await apply(created.id, users[0]);
+        const first = await apply(created.id, users[1]);
+        const second = await apply(created.id, users[2]);
+        const path = adminRestore
+          ? `/admin/events/${created.id}/status`
+          : `/events/${created.id}/status`;
+        const actor = adminRestore ? admin : owner;
+        const paused = await call<Event>(
+          path,
+          "PATCH",
+          { status: "draft" },
+          actor.token,
+        );
+        expect(paused.status).toBe(200);
+        const increased = await call(
+          `/events/${created.id}`,
+          "PATCH",
+          { capacity: 2, expectedVersion: paused.data.version },
+          owner.token,
+        );
+        expect(increased.status).toBe(200);
+        const [before] =
+          await sqlClient`SELECT status FROM registrations WHERE id=${first.registrationId}`;
+        expect(before.status).toBe("waitlisted");
+        const published = await call<{
+          capacity: number;
+          confirmedCount: number;
+        }>(path, "PATCH", { status: "published" }, actor.token);
+        expect(published.status).toBe(200);
+        expect(published.data.capacity).toBe(2);
+        expect(published.data.confirmedCount).toBe(2);
+        const [promoted] =
+          await sqlClient`SELECT status,waitlist_position FROM registrations WHERE id=${first.registrationId}`;
+        const [remaining] =
+          await sqlClient`SELECT status FROM registrations WHERE id=${second.registrationId}`;
+        expect(promoted.status).toBe("confirmed");
+        expect(promoted.waitlist_position).toBeNull();
+        expect(remaining.status).toBe("waitlisted");
+        expect((await apply(created.id, users[3])).status).toBe("waitlisted");
+        expect(
+          (await call(path, "PATCH", { status: "published" }, actor.token))
+            .status,
+        ).toBe(200);
+        const [history] =
+          await sqlClient`SELECT count(*)::int AS count FROM registration_status_histories WHERE registration_id=${first.registrationId} AND reason='automatic_promotion'`;
+        const [notifications] =
+          await sqlClient`SELECT count(*)::int AS count FROM user_notifications WHERE event_id=${created.id} AND user_id=${users[1].id} AND title='キャンセル待ちから参加確定になりました'`;
+        expect(history.count).toBe(1);
+        expect(notifications.count).toBe(1);
+      });
+    }
     test("owner publishes; outsiders cannot operate; admin stops cannot be bypassed", async () => {
       const created = await event(2, false),
         path = `/events/${created.id}/status`;
