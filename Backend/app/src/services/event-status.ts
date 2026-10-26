@@ -1,6 +1,7 @@
 import { sqlClient } from "../db";
 import { ApiError, notFound } from "../lib/errors";
 import { notifyPublishedEvent, notifyRegistration } from "./notifications";
+import { promoteWaitlist } from "./registrations";
 
 type EventStatus = "draft" | "published" | "cancelled" | "completed";
 
@@ -62,8 +63,11 @@ export async function changeEventStatus(
       ${JSON.stringify({ status, reason })}::jsonb)`;
     await tx`INSERT INTO operation_logs(actor_user_id,action,resource_type,resource_id)
       VALUES(${actorId},'event.status_changed','event',${eventId})`;
-    if (status === "published" && current.status !== "published")
+    if (status === "published" && current.status !== "published") {
+      // Paused events may have gained seats; reconcile the queue under the event lock.
+      await promoteWaitlist(tx, eventId);
       await notifyPublishedEvent(tx, eventId);
+    }
     if (status === "cancelled" && current.status !== "cancelled") {
       const registrations =
         await tx`SELECT user_id FROM registrations WHERE event_id=${eventId} AND status<>'cancelled'`;
