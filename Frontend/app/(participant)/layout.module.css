@@ -1711,12 +1711,97 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
+  width: 100%;
   margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--blue);
   font-size: 11px;
   font-weight: 700;
+  cursor: pointer;
 }
 .participant :global(.advanced-search-link svg) {
   width: 15px;
   height: 15px;
+}
+.participant :global(.search-modal-backdrop) {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(22 28 45 / 42%);
+}
+.participant :global(.top-search-modal) {
+  width: min(100%, 430px);
+  height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+  box-shadow: 0 -8px 32px rgb(16 27 58 / 18%);
+}
+.participant :global(.modal-handle) {
+  width: 38px;
+  height: 4px;
+  flex: none;
+  margin: 10px auto 1px;
+  border-radius: 99px;
+  background: #d8dce5;
+}
+.participant :global(.top-search-modal header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.participant :global(.top-search-modal header h2) {
+  margin: 0;
+  font-size: 18px;
+}
+.participant :global(.top-search-modal header button) {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f4f6fa;
+  color: #4f586c;
+}
+.participant :global(.top-search-modal header svg) {
+  width: 20px;
+}
+.participant :global(.top-search-modal-content) {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 16px 24px;
+}
+.participant :global(.top-search-modal-content h3) {
+  margin: 23px 0 10px;
+  font-size: 14px;
+}
+.participant :global(.top-search-modal-content .chip-grid) {
+  margin: 0;
+}
+.participant :global(.top-search-modal footer) {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+.participant :global(.top-search-modal footer .primary-button) {
+  border: 0;
+  cursor: pointer;
+}
+.participant :global(.modal-format-grid),
+.participant :global(.modal-sort-grid) {
+  grid-template-columns: repeat(3, 1fr);
 }
