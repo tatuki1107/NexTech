@@ -7,14 +7,62 @@ import type { Participant } from "../_lib/acceptance";
 const EVENT = { id: "1", title: "React UI設計ワークショップ" };
 
 const participants: Participant[] = [
-  { id: "1", name: "鈴木 健太", requestNumber: "#TC-034", isCheckedIn: false },
-  { id: "2", name: "佐藤 花子", requestNumber: "#TC-035", isCheckedIn: false },
-  { id: "3", name: "田中 美咲", requestNumber: "#TC-036", isCheckedIn: true },
-  { id: "4", name: "伊藤 拓海", requestNumber: "#TC-037", isCheckedIn: false },
-  { id: "5", name: "高橋 葵", requestNumber: "#TC-038", isCheckedIn: false },
-  { id: "6", name: "渡辺 翔", requestNumber: "#TC-039", isCheckedIn: true },
-  { id: "7", name: "山本 結衣", requestNumber: "#TC-040", isCheckedIn: false },
-  { id: "8", name: "中村 蓮", requestNumber: "#TC-041", isCheckedIn: false },
+  {
+    id: "1",
+    name: "鈴木 健太",
+    nameKana: "すずき けんた",
+    requestNumber: "#TC-034",
+    isCheckedIn: false,
+  },
+  {
+    id: "2",
+    name: "佐藤 花子",
+    nameKana: "さとう はなこ",
+    requestNumber: "#TC-035",
+    isCheckedIn: false,
+  },
+  {
+    id: "3",
+    name: "田中 美咲",
+    nameKana: "たなか みさき",
+    requestNumber: "#TC-036",
+    isCheckedIn: true,
+  },
+  {
+    id: "4",
+    name: "伊藤 拓海",
+    nameKana: "いとう たくみ",
+    requestNumber: "#TC-037",
+    isCheckedIn: false,
+  },
+  {
+    id: "5",
+    name: "高橋 葵",
+    nameKana: "たかはし あおい",
+    requestNumber: "#TC-038",
+    isCheckedIn: false,
+  },
+  {
+    id: "6",
+    name: "渡辺 翔",
+    nameKana: "わたなべ しょう",
+    requestNumber: "#TC-039",
+    isCheckedIn: true,
+  },
+  {
+    id: "7",
+    name: "山本 結衣",
+    nameKana: "やまもと ゆい",
+    requestNumber: "#TC-040",
+    isCheckedIn: false,
+  },
+  {
+    id: "8",
+    name: "中村 蓮",
+    nameKana: "なかむら れん",
+    requestNumber: "#TC-041",
+    isCheckedIn: false,
+  },
 ];
 
 export default function AcceptanceDetailPage() {

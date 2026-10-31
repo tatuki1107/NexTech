@@ -7,6 +7,7 @@ export type AcceptanceEvent = OrganizerEvent & {
 export type Participant = {
   id: string;
   name: string;
+  nameKana: string;
   requestNumber: string;
   isCheckedIn: boolean;
 };

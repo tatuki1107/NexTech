@@ -45,8 +45,13 @@ export default function ParticipantTable({
               key={participant.id}
               className="border-t border-ol-neutral-primary align-middle"
             >
-              <td className={`${CELL} text-base text-fg-neutral-primary`}>
-                {participant.name}
+              <td className={CELL}>
+                <p className="text-xs text-fg-neutral-secondary">
+                  {participant.nameKana}
+                </p>
+                <p className="text-base text-fg-neutral-primary">
+                  {participant.name}
+                </p>
               </td>
               <td className={`${CELL} text-base text-fg-neutral-primary`}>
                 {participant.requestNumber}
