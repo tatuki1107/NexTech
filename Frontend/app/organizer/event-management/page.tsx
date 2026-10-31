@@ -112,6 +112,7 @@ export default function EventManagementPage() {
               <EventCard
                 key={event.id}
                 event={event}
+                summary={`申込 ${event.applied} / 定員 ${event.capacity}　待機 ${event.waitlisted}`}
                 rate={calculateRate(event.applied, event.capacity)}
                 rateLabel="申込率"
                 actions={<EventManagementActions event={event} />}

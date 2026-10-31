@@ -5,6 +5,7 @@ import StatusBadge from "./StatusBadge";
 
 type EventCardProps = {
   event: OrganizerEvent;
+  summary: string;
   rate: number;
   rateLabel: string;
   actions: ReactNode;
@@ -12,6 +13,7 @@ type EventCardProps = {
 
 export default function EventCard({
   event,
+  summary,
   rate,
   rateLabel,
   actions,
@@ -32,9 +34,7 @@ export default function EventCard({
         <p className="text-xs text-fg-neutral-secondary">
           {event.schedule}　{event.venue}
         </p>
-        <p className="text-sm text-fg-neutral-primary">
-          申込 {event.applied} / 定員 {event.capacity}　待機 {event.waitlisted}
-        </p>
+        <p className="text-sm text-fg-neutral-primary">{summary}</p>
       </div>
 
       <div className="flex w-105 shrink-0 flex-col justify-between">
