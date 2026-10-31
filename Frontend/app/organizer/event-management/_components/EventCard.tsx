@@ -1,25 +1,22 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 
 import type { OrganizerEvent } from "../_lib/event";
 import StatusBadge from "./StatusBadge";
 
 type EventCardProps = {
   event: OrganizerEvent;
+  rate: number;
+  rateLabel: string;
+  actions: ReactNode;
 };
 
-const BUTTON_BASE =
-  "flex h-12 w-24 items-center justify-center rounded-xl border-2 bg-white text-base";
-const EDIT_BUTTON = `${BUTTON_BASE} border-fg-neutral-secondary text-fg-neutral-secondary`;
-const DETAIL_BUTTON = `${BUTTON_BASE} border-fg-brand-primary text-fg-brand-primary`;
-const PUBLISH_BUTTON = `${BUTTON_BASE} border-fg-accent-green text-fg-accent-green`;
-const DELETE_BUTTON = `${BUTTON_BASE} border-fg-warning-primary text-fg-warning-primary`;
-
-export default function EventCard({ event }: EventCardProps) {
+export default function EventCard({
+  event,
+  rate,
+  rateLabel,
+  actions,
+}: EventCardProps) {
   const isEnded = event.status === "ended";
-  const rate =
-    event.capacity > 0
-      ? Math.min(100, Math.round((event.applied / event.capacity) * 100))
-      : 0;
 
   return (
     <article
@@ -29,13 +26,13 @@ export default function EventCard({ event }: EventCardProps) {
     >
       <div className="space-y-3">
         <StatusBadge status={event.status} />
-        <h3 className="text-xl font-bold text-fg-neutral-primary">
+        <h3 className="text-lg font-bold text-fg-neutral-primary">
           {event.title}
         </h3>
-        <p className="text-sm text-fg-neutral-secondary">
+        <p className="text-xs text-fg-neutral-secondary">
           {event.schedule}　{event.venue}
         </p>
-        <p className="text-fg-neutral-primary">
+        <p className="text-sm text-fg-neutral-primary">
           申込 {event.applied} / 定員 {event.capacity}　待機 {event.waitlisted}
         </p>
       </div>
@@ -45,7 +42,7 @@ export default function EventCard({ event }: EventCardProps) {
         <div className="mt-10 flex h-5 items-center gap-4">
           <div
             role="progressbar"
-            aria-label="申込率"
+            aria-label={rateLabel}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={rate}
@@ -58,57 +55,12 @@ export default function EventCard({ event }: EventCardProps) {
               style={{ width: `${rate}%` }}
             />
           </div>
-          <span className="w-10 text-right text-sm text-fg-neutral-secondary">
+          <span className="w-10 text-right text-xs text-fg-neutral-secondary">
             {rate}%
           </span>
         </div>
 
-        <div className="flex justify-end gap-3">
-          {event.status === "published" && (
-            <>
-              <Link
-                href={`/organizer/event-management/${event.id}/edit`}
-                className={EDIT_BUTTON}
-              >
-                編集
-              </Link>
-              <Link
-                href={`/organizer/event-management/${event.id}`}
-                className={DETAIL_BUTTON}
-              >
-                詳細
-              </Link>
-              {/* 動作は確認モーダルと一緒に別PRで実装 */}
-              <button type="button" className={DELETE_BUTTON}>
-                削除
-              </button>
-            </>
-          )}
-          {event.status === "draft" && (
-            <>
-              <Link
-                href={`/organizer/event-management/${event.id}/edit`}
-                className={EDIT_BUTTON}
-              >
-                編集
-              </Link>
-              <button type="button" className={PUBLISH_BUTTON}>
-                公開
-              </button>
-              <button type="button" className={DELETE_BUTTON}>
-                削除
-              </button>
-            </>
-          )}
-          {isEnded && (
-            <Link
-              href={`/organizer/event-management/${event.id}`}
-              className={DETAIL_BUTTON}
-            >
-              詳細
-            </Link>
-          )}
-        </div>
+        <div className="flex justify-end gap-3">{actions}</div>
       </div>
     </article>
   );

@@ -1,15 +1,61 @@
 import Link from "next/link";
 
 import EventCard from "./_components/EventCard";
-import type { OrganizerEvent } from "./_lib/event";
+import EventManagementActions from "./_components/EventManagementActions";
+import { calculateRate, type OrganizerEvent } from "./_lib/event";
 
 // 仮データ。APIができたら置き換える
 const events: OrganizerEvent[] = [
-  { id: "1", title: "React UI設計ワークショップ", status: "published", schedule: "6/14(土) 13:00 - 16:00", venue: "名古屋 / オンライン", applied: 30, capacity: 30, waitlisted: 2 },
-  { id: "2", title: "LLMアプリ開発入門", status: "published", schedule: "6/21(土) 18:30 - 20:00", venue: "オンライン", applied: 32, capacity: 40, waitlisted: 0 },
-  { id: "3", title: "TypeScript入門ハンズオン", status: "published", schedule: "6/28(土) 10:00 - 12:00", venue: "名古屋", applied: 30, capacity: 45, waitlisted: 0 },
-  { id: "4", title: "Next.js実践ワークショップ", status: "draft", schedule: "7/5(土) 13:00 - 16:00", venue: "名古屋 / オンライン", applied: 0, capacity: 40, waitlisted: 0 },
-  { id: "5", title: "春のフロントエンド交流会", status: "ended", schedule: "5/10(土) 13:00 - 16:00", venue: "名古屋・会場開催", applied: 40, capacity: 40, waitlisted: 0 },
+  {
+    id: "1",
+    title: "React UI設計ワークショップ",
+    status: "published",
+    schedule: "6/14(土) 13:00 - 16:00",
+    venue: "名古屋 / オンライン",
+    applied: 30,
+    capacity: 30,
+    waitlisted: 2,
+  },
+  {
+    id: "2",
+    title: "LLMアプリ開発入門",
+    status: "published",
+    schedule: "6/21(土) 18:30 - 20:00",
+    venue: "オンライン",
+    applied: 32,
+    capacity: 40,
+    waitlisted: 0,
+  },
+  {
+    id: "3",
+    title: "TypeScript入門ハンズオン",
+    status: "published",
+    schedule: "6/28(土) 10:00 - 12:00",
+    venue: "名古屋",
+    applied: 30,
+    capacity: 45,
+    waitlisted: 0,
+  },
+  {
+    id: "4",
+    title: "Next.js実践ワークショップ",
+    status: "draft",
+    schedule: "7/5(土) 13:00 - 16:00",
+    venue: "名古屋 / オンライン",
+    applied: 0,
+    capacity: 40,
+    waitlisted: 0,
+  },
+  {
+    id: "5",
+    title: "春のフロントエンド交流会",
+    status: "ended",
+    schedule: "5/10(土) 13:00 - 16:00",
+    venue: "名古屋・会場開催",
+    applied: 40,
+    capacity: 40,
+    waitlisted: 0,
+  },
 ];
 
 export default function EventManagementPage() {
@@ -63,7 +109,13 @@ export default function EventManagementPage() {
         ) : (
           <div className="space-y-4">
             {events.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <EventCard
+                key={event.id}
+                event={event}
+                rate={calculateRate(event.applied, event.capacity)}
+                rateLabel="申込率"
+                actions={<EventManagementActions event={event} />}
+              />
             ))}
           </div>
         )}
