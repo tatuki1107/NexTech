@@ -1,27 +1,9 @@
 "use client";
-
 import BookmarkBorderOutlinedIcon from "@mui/icons-material/BookmarkBorderOutlined";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
-import { useSyncExternalStore } from "react";
-
-const BOOKMARK_STORAGE_KEY = "nextech-bookmarked-event-ids";
-export const BOOKMARK_EVENT_NAME = "nextech-bookmarks-changed";
-
-export function readBookmarkedEventIds(): string[] {
-  const storedValue = window.localStorage.getItem(BOOKMARK_STORAGE_KEY);
-  if (!storedValue) return [];
-
-  try {
-    const parsedValue: unknown = JSON.parse(storedValue);
-    return Array.isArray(parsedValue) &&
-      parsedValue.every((value) => typeof value === "string")
-      ? parsedValue
-      : [];
-  } catch {
-    return [];
-  }
-}
-
+import { useState } from "react";
+import { useParticipant } from "./ParticipantProvider";
+import { errorMessage } from "../_lib/api";
 export function BookmarkButton({
   eventId,
   title,
@@ -29,37 +11,40 @@ export function BookmarkButton({
   eventId: string;
   title: string;
 }) {
-  const isBookmarked = useSyncExternalStore(
-    (callback) => {
-      window.addEventListener(BOOKMARK_EVENT_NAME, callback);
-      return () => window.removeEventListener(BOOKMARK_EVENT_NAME, callback);
-    },
-    () => readBookmarkedEventIds().includes(eventId),
-    () => false,
-  );
-
-  const handleBookmarkToggle = () => {
-    const bookmarkIds = readBookmarkedEventIds();
-    const nextBookmarkIds = bookmarkIds.includes(eventId)
-      ? bookmarkIds.filter((id) => id !== eventId)
-      : [...bookmarkIds, eventId];
-
-    window.localStorage.setItem(
-      BOOKMARK_STORAGE_KEY,
-      JSON.stringify(nextBookmarkIds),
-    );
-    window.dispatchEvent(new Event(BOOKMARK_EVENT_NAME));
-  };
-
+  const { user, savedIds, toggleSaved, loading } = useParticipant();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const saved = savedIds.includes(eventId);
+  async function toggle() {
+    if (!user) {
+      window.location.assign(
+        `/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+      );
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await toggleSaved(eventId);
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <button
-      className={`bookmark-button ${isBookmarked ? "is-bookmarked" : ""}`}
-      type="button"
-      onClick={handleBookmarkToggle}
-      aria-pressed={isBookmarked}
-      aria-label={`${title}を${isBookmarked ? "保存から外す" : "保存"}`}
-    >
-      {isBookmarked ? <BookmarkIcon /> : <BookmarkBorderOutlinedIcon />}
-    </button>
+    <span>
+      <button
+        className={`bookmark-button ${saved ? "is-bookmarked" : ""}`}
+        type="button"
+        disabled={busy || loading}
+        onClick={toggle}
+        aria-pressed={saved}
+        aria-label={`${title}を${saved ? "保存から外す" : "保存"}`}
+      >
+        {saved ? <BookmarkIcon /> : <BookmarkBorderOutlinedIcon />}
+      </button>
+      {error && <small role="alert">{error}</small>}
+    </span>
   );
 }

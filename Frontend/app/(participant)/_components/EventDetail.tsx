@@ -12,7 +12,13 @@ import {
   type EventDetailData,
 } from "../_lib/event-detail";
 
-export function EventDetail({ event }: { event: EventDetailData }) {
+export function EventDetail({
+  event,
+  onChanged,
+}: {
+  event: EventDetailData;
+  onChanged: () => void;
+}) {
   const deadline = formatDeadline(event.applicationDeadline);
   const applicationRate = Math.min(
     100,
@@ -27,7 +33,9 @@ export function EventDetail({ event }: { event: EventDetailData }) {
       <article className="event-detail">
         <div className="detail-image-wrap">
           <EventImagePlaceholder />
-          <BookmarkButton eventId={event.id} title={event.title} />
+          {!event.isArchived && (
+            <BookmarkButton eventId={event.id} title={event.title} />
+          )}
         </div>
         <div className="detail-body">
           <span className="category-chip">{event.categoryName}</span>
@@ -89,9 +97,27 @@ export function EventDetail({ event }: { event: EventDetailData }) {
             <h2>イベント内容</h2>
             <p>{event.description}</p>
           </section>
+          {event.participationConditions && (
+            <section className="description-block">
+              <h2>参加条件</h2>
+              <p>{event.participationConditions}</p>
+            </section>
+          )}
+          {event.onlineUrl && /^https?:\/\//i.test(event.onlineUrl) && (
+            <section className="description-block">
+              <h2>オンライン参加</h2>
+              <a
+                href={event.onlineUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                参加URLを開く
+              </a>
+            </section>
+          )}
         </div>
       </article>
-      <EventAction />
+      <EventAction event={event} onChanged={onChanged} />
     </ParticipantShell>
   );
 }

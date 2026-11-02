@@ -6,10 +6,12 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { getPublicEvents } from "../_lib/event-list";
 import { matchesEventFilters } from "../_lib/event-search-filter";
 import { EventCard } from "@/app/(participant)/_components/EventCard";
 
 type ApiEvent = {
+  tagNames?: string[];
   id: string;
   title: string;
   format: string;
@@ -25,36 +27,6 @@ type ApiEvent = {
 
 type SortOption = "おすすめ" | "申し込み期間" | "残席順";
 
-function isApiEvent(value: unknown): value is ApiEvent {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "id" in value &&
-    typeof value.id === "string" &&
-    "title" in value &&
-    typeof value.title === "string" &&
-    "format" in value &&
-    typeof value.format === "string" &&
-    "venueName" in value &&
-    (typeof value.venueName === "string" || value.venueName === null) &&
-    "startAt" in value &&
-    typeof value.startAt === "string" &&
-    "endAt" in value &&
-    typeof value.endAt === "string" &&
-    "applicationDeadline" in value &&
-    (typeof value.applicationDeadline === "string" ||
-      value.applicationDeadline === null) &&
-    "capacity" in value &&
-    typeof value.capacity === "number" &&
-    "categoryName" in value &&
-    typeof value.categoryName === "string" &&
-    "organizerName" in value &&
-    typeof value.organizerName === "string" &&
-    "seatsLeft" in value &&
-    typeof value.seatsLeft === "number"
-  );
-}
-
 function formatEventDate(startAt: string, endAt: string) {
   const startDate = new Date(startAt);
   const endDate = new Date(endAt);
@@ -65,7 +37,6 @@ function formatEventDate(startAt: string, endAt: string) {
   ];
   return `${startDate.getMonth() + 1}/${startDate.getDate()}（${weekday}） ${startDate.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false })} - ${endDate.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
 }
-
 
 function sortEvents(events: ApiEvent[], sort: SortOption) {
   if (sort === "おすすめ") return events;
@@ -99,48 +70,52 @@ export function EventSearch() {
   const [advancedTags, setAdvancedTags] = useState<string[]>([]);
   const [advancedFormat, setAdvancedFormat] = useState("すべて");
   const [advancedSort, setAdvancedSort] = useState<SortOption>("おすすめ");
-  const [appliedTags, setAppliedTags] = useState<string[]>(() => searchParams.get("tags")?.split(",").filter(Boolean) ?? []);
+  const [appliedTags, setAppliedTags] = useState<string[]>(
+    () => searchParams.get("tags")?.split(",").filter(Boolean) ?? [],
+  );
   const [appliedFormat, setAppliedFormat] = useState(() => {
     const format = searchParams.get("format");
     return format === "オンライン" || format === "会場開催" ? format : "すべて";
   });
   const [appliedSort, setAppliedSort] = useState<SortOption>("おすすめ");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/events", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok)
-          throw new Error("イベント一覧を取得できませんでした。");
-        const value: unknown = await response.json();
-        if (
-          !value ||
-          typeof value !== "object" ||
-          !("events" in value) ||
-          !Array.isArray(value.events) ||
-          !value.events.every(isApiEvent)
-        )
-          throw new Error("イベント一覧の形式が正しくありません。");
-        setEvents(value.events);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
+    getPublicEvents(controller.signal)
+      .then(setEvents)
+      .catch(() => {
+        if (controller.signal.aborted) return;
         setErrorMessage(
           "イベント一覧を読み込めませんでした。時間をおいて再度お試しください。",
         );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
       });
     return () => controller.abort();
   }, []);
 
   const filteredEvents = useMemo(() => {
     const matchedEvents = events.filter((event) => {
-        const eventLocation = event.format === "online" ? "オンライン" : (event.venueName ?? "会場未定");
-        return matchesEventFilters(event, { keyword, date, tags: appliedTags, format: appliedFormat }) &&
-          (tag === "すべて" || event.categoryName === tag) &&
-          (location === "すべて" || eventLocation === location);
-      });
+      const eventLocation =
+        event.format === "online"
+          ? "オンライン"
+          : (event.venueName ?? "会場未定");
+      return (
+        matchesEventFilters(event, {
+          keyword,
+          date,
+          tags: appliedTags,
+          format: appliedFormat,
+        }) &&
+        (tag === "すべて" ||
+          event.categoryName === tag ||
+          event.tagNames?.includes(tag)) &&
+        (location === "すべて" || eventLocation === location)
+      );
+    });
 
     return sortEvents(matchedEvents, appliedSort);
   }, [
@@ -154,7 +129,14 @@ export function EventSearch() {
     tag,
   ]);
 
-  const tags = Array.from(new Set(events.map((event) => event.categoryName)));
+  const tags = Array.from(
+    new Set(
+      events.flatMap((event) => [
+        event.categoryName,
+        ...(event.tagNames ?? []),
+      ]),
+    ),
+  );
   const locations = Array.from(
     new Set(
       events.map((event) =>
@@ -187,12 +169,14 @@ export function EventSearch() {
         : [...current, targetTag],
     );
   };
-  const advancedResultCount = events.filter((event) => matchesEventFilters(event, {
-    keyword: advancedKeyword,
-    date: advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
-    tags: advancedTags,
-    format: advancedFormat,
-  })).length;
+  const advancedResultCount = events.filter((event) =>
+    matchesEventFilters(event, {
+      keyword: advancedKeyword,
+      date: advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
+      tags: advancedTags,
+      format: advancedFormat,
+    }),
+  ).length;
   const resetAdvancedSearch = () => {
     setAdvancedKeyword("");
     setAdvancedDate("すべて");
@@ -228,7 +212,9 @@ export function EventSearch() {
             <span>開催日</span>
             <select value={date} onChange={selectChangeHandler(setDate)}>
               <option>すべて</option>
-              {!["すべて", ...dates].includes(date) && <option value={date}>{date}</option>}
+              {!["すべて", ...dates].includes(date) && (
+                <option value={date}>{date}</option>
+              )}
               {dates.map((item) => (
                 <option key={item}>{item}</option>
               ))}
@@ -261,10 +247,16 @@ export function EventSearch() {
           type="button"
           onClick={() => {
             setAdvancedKeyword(keyword);
-            setAdvancedDate(/^\d{4}-\d{2}-\d{2}$/.test(date) ? "日付指定" : date);
-            setAdvancedSpecificDate(/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "");
+            setAdvancedDate(
+              /^\d{4}-\d{2}-\d{2}$/.test(date) ? "日付指定" : date,
+            );
+            setAdvancedSpecificDate(
+              /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "",
+            );
             setAdvancedTags(tag === "すべて" ? appliedTags : [tag]);
-            setAdvancedFormat(location === "オンライン" ? "オンライン" : appliedFormat);
+            setAdvancedFormat(
+              location === "オンライン" ? "オンライン" : appliedFormat,
+            );
             setAdvancedSort(appliedSort);
             setIsAdvancedSearchOpen(true);
           }}
@@ -325,7 +317,13 @@ export function EventSearch() {
               {advancedDate === "日付指定" && (
                 <label className="filter-label-text">
                   開催日を指定
-                  <input type="date" value={advancedSpecificDate} onChange={(event) => setAdvancedSpecificDate(event.target.value)} />
+                  <input
+                    type="date"
+                    value={advancedSpecificDate}
+                    onChange={(event) =>
+                      setAdvancedSpecificDate(event.target.value)
+                    }
+                  />
                 </label>
               )}
               <h3>タグ</h3>
@@ -395,7 +393,11 @@ export function EventSearch() {
           <h2 id="event-list-title">おすすめイベント</h2>
           <span className="result-count">{filteredEvents.length}件</span>
         </div>
-        {errorMessage ? (
+        {isLoading ? (
+          <p className="empty-state" role="status">
+            イベントを読み込み中…
+          </p>
+        ) : errorMessage ? (
           <p className="empty-state">{errorMessage}</p>
         ) : filteredEvents.length > 0 ? (
           <div className="event-list">

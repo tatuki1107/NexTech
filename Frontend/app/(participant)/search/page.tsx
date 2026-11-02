@@ -3,35 +3,19 @@
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { getPublicEvents } from "../_lib/event-list";
 import { ParticipantShell } from "@/app/(participant)/_components/ParticipantShell";
 
 const dates = ["すべて", "今週", "今月", "日付指定"];
-const tags = ["フロントエンド", "バックエンド", "生成AI", "UI/UX", "キャリア"];
 
 type ApiEvent = {
+  tagNames?: string[];
   title: string;
   categoryName: string;
   organizerName: string;
   format: string;
   startAt: string;
 };
-
-function isApiEvent(value: unknown): value is ApiEvent {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "title" in value &&
-    typeof value.title === "string" &&
-    "categoryName" in value &&
-    typeof value.categoryName === "string" &&
-    "organizerName" in value &&
-    typeof value.organizerName === "string" &&
-    "format" in value &&
-    typeof value.format === "string" &&
-    "startAt" in value &&
-    typeof value.startAt === "string"
-  );
-}
 
 function matchesDateFilter(
   startAt: string,
@@ -66,12 +50,18 @@ function matchesDateFilter(
 export default function SearchPage() {
   const [keyword, setKeyword] = useState("");
   const [selectedDate, setSelectedDate] = useState("すべて");
-  const [selectedTags, setSelectedTags] = useState<string[]>([
-    "フロントエンド",
-    "生成AI",
-  ]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedFormat, setSelectedFormat] = useState("すべて");
   const [events, setEvents] = useState<ApiEvent[]>([]);
+  const tags = [
+    ...new Set(
+      events.flatMap((event) => [
+        event.categoryName,
+        ...(event.tagNames ?? []),
+      ]),
+    ),
+  ];
+  const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [referenceDate] = useState(() => new Date());
   const toggleTag = (tag: string) =>
@@ -95,25 +85,11 @@ export default function SearchPage() {
   const resultHref = query.size > 0 ? `/?${query.toString()}` : "/";
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/events", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok)
-          throw new Error("イベント一覧を取得できませんでした。");
-        const value: unknown = await response.json();
-        if (
-          !value ||
-          typeof value !== "object" ||
-          !("events" in value) ||
-          !Array.isArray(value.events) ||
-          !value.events.every(isApiEvent)
-        )
-          throw new Error("イベント一覧の形式が正しくありません。");
-        setEvents(value.events);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
-        setEvents([]);
+    getPublicEvents(controller.signal)
+      .then(setEvents)
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setErrorMessage("イベントを取得できませんでした。再度お試しください。");
       })
       .finally(() => setIsLoading(false));
     return () => controller.abort();
@@ -125,7 +101,9 @@ export default function SearchPage() {
           `${event.title} ${event.categoryName} ${event.organizerName}`.toLowerCase();
         const hasMatchingTag =
           selectedTags.length === 0 ||
-          selectedTags.includes(event.categoryName);
+          [event.categoryName, ...(event.tagNames ?? [])].some((tag) =>
+            selectedTags.includes(tag),
+          );
         const hasMatchingFormat =
           selectedFormat === "すべて" ||
           (selectedFormat === "オンライン"
@@ -154,6 +132,7 @@ export default function SearchPage() {
     <ParticipantShell active="search" showBack>
       <section className="filter-page">
         <h1>検索条件</h1>
+        {errorMessage && <p role="alert">{errorMessage}</p>}
         <label className="filter-label-text">
           キーワード
           <span className="keyword-field">
