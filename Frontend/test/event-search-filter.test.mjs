@@ -14,6 +14,11 @@ test("specific date filters by year, month and day", () => {
   assert.equal(matchesDateFilter(new Date(2026, 10, 2, 13), "2026-11-01"), false);
   assert.equal(matchesDateFilter(new Date(2026, 10, 1, 13), ""), false);
 });
+test("API tag names participate in search and filtering independently of categories", () => {
+  const tagged = { ...events[0], tagNames: ["TypeScript"] };
+  assert.equal(matchesEventFilters(tagged, { ...all, tags: ["TypeScript"] }), true);
+  assert.equal(matchesEventFilters(tagged, { ...all, keyword: "typescript" }), true);
+});
 test("replacing URL-initialized filters does not retain hidden constraints", () => {
   const initial = { ...all, tags: ["Frontend"], format: "オンライン" };
   assert.deepEqual(events.filter(event => matchesEventFilters(event, initial)), [events[0]]);

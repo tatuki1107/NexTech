@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useParticipant } from "./ParticipantProvider";
 import type { ReactNode } from "react";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import BookmarkBorderOutlinedIcon from "@mui/icons-material/BookmarkBorderOutlined";
@@ -42,6 +45,7 @@ export function ParticipantShell({
   title,
   showBack = false,
 }: ParticipantShellProps) {
+  const { unreadCount } = useParticipant();
   return (
     <div className="user-app">
       <header className="user-header">
@@ -63,7 +67,7 @@ export function ParticipantShell({
             aria-label="通知を見る"
           >
             <NotificationsNoneOutlinedIcon />
-            <span className="notification-dot" />
+            {unreadCount > 0 && <span className="notification-dot" />}
           </Link>
         ) : (
           <span className="header-spacer" />

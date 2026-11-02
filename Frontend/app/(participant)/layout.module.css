@@ -1805,3 +1805,22 @@
 .participant :global(.modal-sort-grid) {
   grid-template-columns: repeat(3, 1fr);
 }
+.participant :global(.participant-form) {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.participant :global(.participant-form label) {
+  display: grid;
+  gap: 6px;
+}
+.participant :global(.participant-form input:not([type="checkbox"])),
+.participant :global(.participant-form textarea) {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+  color: #111827;
+}
+.participant :global(button:disabled) { cursor: not-allowed; opacity: 0.6; }
