@@ -1,4 +1,4 @@
-export type EventStatus = "published" | "draft" | "ended";
+export type EventStatus = "published" | "full" | "draft" | "ended";
 
 export type OrganizerEvent = {
   id: string;
