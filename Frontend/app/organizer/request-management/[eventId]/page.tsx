@@ -1,70 +1,11 @@
 import Link from "next/link";
 
+import { MOCK_APPLICANT_EVENT_TITLE } from "../../_mocks/events";
+import { MOCK_APPLICANTS } from "../../_mocks/participants";
 import ApplicantTable from "../_components/ApplicantTable";
 import SummaryCard from "../_components/SummaryCard";
-import type { Applicant } from "../_lib/request";
 
-// 仮データ。APIができたら、URLのeventIdで取得したイベントに置き換える
-const EVENT_TITLE = "React UI設計ワークショップ";
-
-const applicants: Applicant[] = [
-  {
-    id: "1",
-    name: "鈴木 健太",
-    email: "kenta@example.jp",
-    requestNumber: "#TC-034",
-    appliedAt: "5/18 12:42",
-    status: "applied",
-  },
-  {
-    id: "2",
-    name: "佐藤 花子",
-    email: "hanako@example.jp",
-    requestNumber: "#TC-035",
-    appliedAt: "5/18 13:08",
-    status: "cancelled",
-  },
-  {
-    id: "3",
-    name: "田中 美咲",
-    email: "misaki@example.jp",
-    requestNumber: "#TC-036",
-    appliedAt: "5/19 09:15",
-    status: "applied",
-  },
-  {
-    id: "4",
-    name: "伊藤 拓海",
-    email: "takumi@example.jp",
-    requestNumber: "#TC-037",
-    appliedAt: "5/19 10:31",
-    status: "applied",
-  },
-  {
-    id: "5",
-    name: "高橋 葵",
-    email: "aoi@example.jp",
-    requestNumber: "#TC-038",
-    appliedAt: "5/20 16:02",
-    status: "cancelled",
-  },
-  {
-    id: "6",
-    name: "高橋 葵",
-    email: "aoi@example.jp",
-    requestNumber: "#TC-038",
-    appliedAt: "5/20 16:02",
-    status: "cancelled",
-  },
-  {
-    id: "7",
-    name: "高橋 葵",
-    email: "aoi@example.jp",
-    requestNumber: "#TC-038",
-    appliedAt: "5/20 16:02",
-    status: "cancelled",
-  },
-];
+const applicants = MOCK_APPLICANTS;
 
 const appliedCount = applicants.filter(
   (applicant) => applicant.status === "applied",
@@ -103,7 +44,7 @@ export default function ApplicantListPage() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-fg-neutral-primary">
-            {EVENT_TITLE}
+            {MOCK_APPLICANT_EVENT_TITLE}
           </h1>
           <p className="mt-2 text-xs text-fg-neutral-secondary">申込者一覧</p>
         </div>

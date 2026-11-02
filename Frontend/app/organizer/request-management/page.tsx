@@ -1,50 +1,8 @@
+import { MOCK_REQUEST_SUMMARIES } from "../_mocks/events";
 import EventRequestTable from "./_components/EventRequestTable";
 import SummaryCard from "./_components/SummaryCard";
-import type { EventRequestSummary } from "./_lib/request";
 
-// 仮データ。APIができたら置き換える
-const events: EventRequestSummary[] = [
-  {
-    id: "1",
-    title: "React UI設計ワークショップ",
-    schedule: "6/14(土) 13:00",
-    status: "published",
-    applied: 32,
-    waitlisted: 0,
-  },
-  {
-    id: "2",
-    title: "LLMアプリ開発入門",
-    schedule: "6/21(土) 18:30",
-    status: "full",
-    applied: 40,
-    waitlisted: 12,
-  },
-  {
-    id: "3",
-    title: "デザインシステム実践講座",
-    schedule: "6/28(土) 10:00",
-    status: "published",
-    applied: 28,
-    waitlisted: 2,
-  },
-  {
-    id: "4",
-    title: "TypeScript設計レビュー会",
-    schedule: "7/05(土) 14:00",
-    status: "draft",
-    applied: 18,
-    waitlisted: 4,
-  },
-  {
-    id: "5",
-    title: "キャリア相談ミートアップ",
-    schedule: "7/12(土) 19:00",
-    status: "draft",
-    applied: 10,
-    waitlisted: 0,
-  },
-];
+const events = MOCK_REQUEST_SUMMARIES;
 
 const totalApplied = events.reduce((sum, event) => sum + event.applied, 0);
 const totalWaitlisted = events.reduce(

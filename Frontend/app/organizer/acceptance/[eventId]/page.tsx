@@ -1,69 +1,10 @@
 import Link from "next/link";
 
+import { MOCK_ACCEPTANCE_EVENT } from "../../_mocks/events";
+import { MOCK_ACCEPTANCE_PARTICIPANTS } from "../../_mocks/participants";
 import AcceptancePanel from "../_components/AcceptancePanel";
-import type { Participant } from "../_lib/acceptance";
 
-// 仮データ。APIができたら、URLのeventIdで取得したイベントと参加者に置き換える
-const EVENT = { id: "1", title: "React UI設計ワークショップ" };
-
-const participants: Participant[] = [
-  {
-    id: "1",
-    name: "鈴木 健太",
-    nameKana: "すずき けんた",
-    requestNumber: "#TC-034",
-    isCheckedIn: false,
-  },
-  {
-    id: "2",
-    name: "佐藤 花子",
-    nameKana: "さとう はなこ",
-    requestNumber: "#TC-035",
-    isCheckedIn: false,
-  },
-  {
-    id: "3",
-    name: "田中 美咲",
-    nameKana: "たなか みさき",
-    requestNumber: "#TC-036",
-    isCheckedIn: true,
-  },
-  {
-    id: "4",
-    name: "伊藤 拓海",
-    nameKana: "いとう たくみ",
-    requestNumber: "#TC-037",
-    isCheckedIn: false,
-  },
-  {
-    id: "5",
-    name: "高橋 葵",
-    nameKana: "たかはし あおい",
-    requestNumber: "#TC-038",
-    isCheckedIn: false,
-  },
-  {
-    id: "6",
-    name: "渡辺 翔",
-    nameKana: "わたなべ しょう",
-    requestNumber: "#TC-039",
-    isCheckedIn: true,
-  },
-  {
-    id: "7",
-    name: "山本 結衣",
-    nameKana: "やまもと ゆい",
-    requestNumber: "#TC-040",
-    isCheckedIn: false,
-  },
-  {
-    id: "8",
-    name: "中村 蓮",
-    nameKana: "なかむら れん",
-    requestNumber: "#TC-041",
-    isCheckedIn: false,
-  },
-];
+const event = MOCK_ACCEPTANCE_EVENT;
 
 export default function AcceptanceDetailPage() {
   return (
@@ -89,10 +30,10 @@ export default function AcceptanceDetailPage() {
         </Link>
         <div className="flex items-center justify-between gap-6">
           <h1 className="text-3xl font-bold text-fg-neutral-primary">
-            {EVENT.title}
+            {event.title}
           </h1>
           <Link
-            href={`/organizer/event-management/${EVENT.id}`}
+            href={`/organizer/event-management/${event.id}`}
             className="flex h-14 shrink-0 items-center rounded-xl border border-ol-neutral-primary bg-white px-6 text-sm font-bold text-fg-neutral-primary"
           >
             イベント詳細へ
@@ -100,7 +41,7 @@ export default function AcceptanceDetailPage() {
         </div>
       </div>
 
-      <AcceptancePanel initialParticipants={participants} />
+      <AcceptancePanel initialParticipants={MOCK_ACCEPTANCE_PARTICIPANTS} />
     </div>
   );
 }

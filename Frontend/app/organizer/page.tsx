@@ -1,28 +1,30 @@
 import NextEventCard from "./_components/dashboard/NextEventCard";
 import QuickActionCard from "./_components/dashboard/QuickActionCard";
 import StatCard from "./_components/dashboard/StatCard";
+import { MOCK_DASHBOARD_STATS } from "./_mocks/analytics";
+import { MOCK_NEXT_EVENT } from "./_mocks/events";
 
-// 仮データ。APIができたら置き換える
-const stats = [
-  { label: "公開中イベント", value: "3", note: "イベント管理で詳細を確認", valueClassName: "text-fg-brand-primary" },
-  { label: "今月の申込", value: "128", note: "前月比 +12%", valueClassName: "text-fg-accent-green" },
-  { label: "平均参加率", value: "87%", note: "直近3イベント", valueClassName: "text-fg-neutral-primary" },
-  { label: "次回開催", value: "6/14", note: "13:00 開始", valueClassName: "text-fg-neutral-primary" },
-];
-
+// 画面の導線の設定なので、仮データではなくページに置く
 const quickActions = [
-  { title: "新しいイベントを作成", description: "開催内容・定員・受付期間を設定", href: "/organizer/event-management", className: "bg-bg-accent-blue" },
-  { title: "申込状況を確認", description: "申込数とキャンセル待ちを確認", href: "/organizer/request-management", className: "bg-bg-accent-green" },
-  { title: "分析レポートを見る", description: "参加率や流入傾向を確認", href: "/organizer/analytics-report", className: "bg-bg-accent-purple" },
+  {
+    title: "新しいイベントを作成",
+    description: "開催内容・定員・受付期間を設定",
+    href: "/organizer/event-management",
+    className: "bg-bg-accent-blue",
+  },
+  {
+    title: "申込状況を確認",
+    description: "申込数とキャンセル待ちを確認",
+    href: "/organizer/request-management",
+    className: "bg-bg-accent-green",
+  },
+  {
+    title: "分析レポートを見る",
+    description: "参加率や流入傾向を確認",
+    href: "/organizer/analytics-report",
+    className: "bg-bg-accent-purple",
+  },
 ];
-
-const nextEvent = {
-  title: "React UI設計ワークショップ",
-  schedule: "2026/06/14(土) 13:00 - 16:00　名古屋 / オンライン",
-  applied: 32,
-  capacity: 40,
-  attendanceRate: 87,
-};
 
 export default function OrganizerPage() {
   return (
@@ -37,7 +39,7 @@ export default function OrganizerPage() {
       </header>
 
       <section aria-label="集計" className="grid grid-cols-4 gap-6">
-        {stats.map((stat) => (
+        {MOCK_DASHBOARD_STATS.map((stat) => (
           <StatCard key={stat.label} {...stat} />
         ))}
       </section>
@@ -57,7 +59,7 @@ export default function OrganizerPage() {
         <h2 className="mb-4 text-xl font-bold text-fg-neutral-primary">
           次の開催
         </h2>
-        <NextEventCard event={nextEvent} />
+        <NextEventCard event={MOCK_NEXT_EVENT} />
       </section>
     </div>
   );
