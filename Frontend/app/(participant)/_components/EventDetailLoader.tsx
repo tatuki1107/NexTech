@@ -25,6 +25,8 @@ function RegistrationDetail({ id }: { id: string }) {
       onChanged={reload}
       event={{
         ...registration.event,
+        registrationStatus:
+          registration.status === "cancelled" ? null : registration.status,
         isArchived: true,
         description:
           "このイベントは現在公開されていません。以下はご自身の申込履歴です。",

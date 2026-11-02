@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { apiRequest, errorMessage } from "../_lib/api";
 import type { EventDetailData } from "../_lib/event-detail";
 import { useParticipant } from "./ParticipantProvider";
+import { getEventActionPolicy } from "../_lib/event-action";
 export function EventAction({
   event,
   onChanged,
@@ -19,21 +20,8 @@ export function EventAction({
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
-  const registered = Boolean(
-    event.registrationStatus && event.registrationStatus !== "cancelled",
-  );
-  const started = new Date(event.startAt).getTime() <= now;
-  const closed =
-    started ||
-    Boolean(
-      event.applicationDeadline &&
-        new Date(event.applicationDeadline).getTime() < now,
-    );
-  const notOpen = Boolean(
-    event.applicationStartAt &&
-      new Date(event.applicationStartAt).getTime() > now,
-  );
-  const full = event.seatsLeft === 0 && !event.waitlistEnabled;
+  const policy = getEventActionPolicy(event, now);
+  const registered = policy.kind === "cancel";
   async function submit() {
     if (!session.user) {
       window.location.assign(
@@ -75,8 +63,8 @@ export function EventAction({
   }
   return (
     <div className="sticky-action">
-      {event.isArchived ? (
-        <p>公開終了したイベントの申込履歴です。</p>
+      {policy.kind === "history" ? (
+        <p>現在公開されていないイベントの申込履歴です。</p>
       ) : (
         <>
           {event.registrationStatus === "confirmed" && (
@@ -100,32 +88,22 @@ export function EventAction({
           <button
             type="button"
             className="primary-button"
-            disabled={
-              busy ||
-              session.loading ||
-              (registered ? started : closed || notOpen || full)
-            }
+            disabled={busy || session.loading || Boolean(policy.disabledReason)}
             onClick={() => void submit()}
           >
             {busy
               ? "処理中…"
-              : registered
-                ? started
-                  ? "開催後はキャンセルできません"
-                  : confirming
+              : policy.disabledReason
+                ? policy.disabledReason
+                : registered
+                  ? confirming
                     ? "申込キャンセルを確定する"
                     : "申込をキャンセルする"
-                : closed
-                  ? "申込受付は終了しました"
-                  : notOpen
-                    ? "申込受付開始前です"
-                    : full
-                      ? "満席です"
-                      : !session.user
-                        ? "ログインして申し込む"
-                        : event.seatsLeft === 0
-                          ? "キャンセル待ちに申し込む"
-                          : "参加を申し込む"}
+                  : !session.user
+                    ? "ログインして申し込む"
+                    : event.seatsLeft === 0
+                      ? "キャンセル待ちに申し込む"
+                      : "参加を申し込む"}
           </button>
           {message && <p role="status">{message}</p>}
         </>
