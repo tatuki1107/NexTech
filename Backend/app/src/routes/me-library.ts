@@ -124,7 +124,7 @@ export const meLibraryRoutes = new Elysia({ prefix: "/me" })
         await sqlClient`SELECT count(*)::int AS total FROM organizers o
       WHERE o.owner_user_id=${user.id} OR EXISTS (SELECT 1 FROM organizer_members m WHERE m.organizer_id=o.id AND m.user_id=${user.id})`;
       const rows =
-        await sqlClient`SELECT o.id,o.name,o.slug,o.description,o.status,
+        await sqlClient`SELECT o.id,o.name,o.slug,o.description,o.status,o.website_url AS "websiteUrl",o.contact_email AS "contactEmail",
       CASE WHEN o.owner_user_id=${user.id} THEN 'owner' ELSE m.member_role END AS "memberRole"
       FROM organizers o LEFT JOIN organizer_members m ON m.organizer_id=o.id AND m.user_id=${user.id}
       WHERE o.owner_user_id=${user.id} OR m.user_id=${user.id}

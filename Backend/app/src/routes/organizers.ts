@@ -18,28 +18,28 @@ import { validateEventContent } from "../services/event-validation";
 const eventFields = {
   title: t.String({ minLength: 1, maxLength: 160, pattern: "\\S" }),
   summary: t.Optional(t.String({ maxLength: 300 })),
-  description: t.String({ minLength: 1 }),
+  description: t.String(),
   participationConditions: t.Optional(
     t.Nullable(t.String({ maxLength: 10000 })),
   ),
-  categoryId: t.String({ pattern: UUID_PATTERN }),
+  categoryId: t.Nullable(t.String({ pattern: UUID_PATTERN })),
   tagIds: t.Optional(
     t.Array(t.String({ pattern: UUID_PATTERN }), { maxItems: 30 }),
   ),
-  format: t.Union([
-    t.Literal("online"),
-    t.Literal("offline"),
-    t.Literal("hybrid"),
-  ]),
+  format: t.Nullable(
+    t.Union([t.Literal("online"), t.Literal("offline"), t.Literal("hybrid")]),
+  ),
   venueName: t.Optional(t.String({ maxLength: 160 })),
   address: t.Optional(t.String({ maxLength: 1000 })),
-  onlineUrl: t.Optional(t.String({ format: "uri", maxLength: 2000 })),
-  startAt: t.String({ format: "date-time" }),
-  endAt: t.String({ format: "date-time" }),
-  capacity: t.Integer({ minimum: 1 }),
+  onlineUrl: t.Optional(
+    t.Nullable(t.String({ format: "uri", maxLength: 2000 })),
+  ),
+  startAt: t.Nullable(t.String({ format: "date-time" })),
+  endAt: t.Nullable(t.String({ format: "date-time" })),
+  capacity: t.Nullable(t.Integer({ minimum: 1 })),
   waitlistEnabled: t.Boolean(),
-  applicationStartAt: t.Optional(t.String({ format: "date-time" })),
-  applicationDeadline: t.String({ format: "date-time" }),
+  applicationStartAt: t.Optional(t.Nullable(t.String({ format: "date-time" }))),
+  applicationDeadline: t.Nullable(t.String({ format: "date-time" })),
 };
 export const organizerRoutes = new Elysia()
   .post(
@@ -211,7 +211,7 @@ export const organizerRoutes = new Elysia()
           const [{ count }] =
             await tx`SELECT count(*)::int AS count FROM registrations
         WHERE event_id=${params.eventId} AND status IN ('pending','confirmed','checked_in','no_show')`;
-          if (body.capacity < Number(count))
+          if ((body.capacity ?? 0) < Number(count))
             throw new ApiError(
               422,
               "BUSINESS_RULE_ERROR",
@@ -255,7 +255,7 @@ export const organizerRoutes = new Elysia()
           values,
         );
         if (
-          body.capacity !== undefined &&
+          typeof body.capacity === "number" &&
           body.capacity > Number(current.capacity)
         )
           await promoteWaitlist(tx, params.eventId);

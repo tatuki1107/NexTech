@@ -2,6 +2,29 @@ const ACCESS_COOKIE = "nextechAccessToken";
 const REFRESH_COOKIE = "nextechRefreshToken";
 const uuid = "[0-9a-fA-F-]{36}";
 
+export function isOrganizerEndpoint(path: string, method: string): boolean {
+  const rules: Array<[string, RegExp]> = [
+    ["GET", /^me\/organizers$/],
+    ["POST", /^organizers$/],
+    ["PATCH", new RegExp(`^organizers/${uuid}$`)],
+    ["GET|POST", new RegExp(`^organizers/${uuid}/events$`)],
+    [
+      "GET",
+      new RegExp(`^organizers/${uuid}/(members|analytics|events/${uuid})$`),
+    ],
+    ["PATCH", new RegExp(`^events/${uuid}(/status)?$`)],
+    ["GET", new RegExp(`^events/${uuid}/(registrations|recruitment-summary)$`)],
+    [
+      "POST|DELETE",
+      new RegExp(`^events/${uuid}/registrations/${uuid}/check-in$`),
+    ],
+  ];
+  return rules.some(
+    ([methods, pattern]) =>
+      methods.split("|").includes(method) && pattern.test(path),
+  );
+}
+
 export function isParticipantEndpoint(path: string, method: string): boolean {
   const rules: Array<[string, RegExp]> = [
     ["POST", /^auth\/(signup|login|refresh|logout)$/],
@@ -40,9 +63,13 @@ export async function proxyParticipantApi(
   request: Request,
   segments: string[],
   fetcher: typeof fetch = fetch,
+  includeOrganizer = false,
 ): Promise<Response> {
   const path = segments.join("/");
-  if (!isParticipantEndpoint(path, request.method))
+  if (
+    !isParticipantEndpoint(path, request.method) &&
+    !(includeOrganizer && isOrganizerEndpoint(path, request.method))
+  )
     return error(404, "NOT_FOUND", "APIが見つかりません");
   const url = new URL(request.url);
   // Next can use its internal hostname in request.url. Host is browser-controlled,

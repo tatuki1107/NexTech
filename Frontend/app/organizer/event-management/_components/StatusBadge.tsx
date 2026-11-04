@@ -22,6 +22,10 @@ const STATUS_STYLES: Record<EventStatus, { label: string; className: string }> =
       label: "開催済み",
       className: "bg-ol-neutral-primary text-fg-neutral-secondary",
     },
+    cancelled: {
+      label: "中止",
+      className: "bg-bg-accent-yellow text-fg-warning-primary",
+    },
   };
 
 export default function StatusBadge({ status }: StatusBadgeProps) {

@@ -22,7 +22,7 @@ export default function EventCard({
 
   return (
     <article
-      className={`flex items-stretch justify-between gap-8 rounded-xl border border-ol-neutral-primary p-6 ${
+      className={`flex flex-col items-stretch justify-between gap-8 rounded-xl border border-ol-neutral-primary p-6 xl:flex-row ${
         isEnded ? "bg-bg-neutral-primary" : "bg-white"
       }`}
     >
@@ -37,7 +37,7 @@ export default function EventCard({
         <p className="text-sm text-fg-neutral-primary">{summary}</p>
       </div>
 
-      <div className="flex w-105 shrink-0 flex-col justify-between">
+      <div className="flex w-full shrink-0 flex-col justify-between xl:w-105">
         {/* mt-10: バッジ(24px) + 間隔(12px) + タイトル行との差(4px)。バーをタイトルの高さに揃えるための値 */}
         <div className="mt-10 flex h-5 items-center gap-4">
           <div

@@ -3,6 +3,7 @@
 ## 現行実装の資料
 
 - [参加者画面のAPI接続](PARTICIPANT_API.md)
+- [主催者画面のAPI接続](ORGANIZER_API.md)
 
 - [要件定義書とAPIの対応](API_REQUIREMENTS.md)
 - [現行OpenAPI](../Backend/app/openapi/index.yaml)：API実装に対応する入力・出力・状態値。
