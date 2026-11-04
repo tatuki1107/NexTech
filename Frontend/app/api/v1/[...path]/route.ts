@@ -4,7 +4,7 @@ async function handle(
   request: Request,
   context: { params: Promise<{ path: string[] }> },
 ) {
-  return proxyParticipantApi(request, (await context.params).path);
+  return proxyParticipantApi(request, (await context.params).path, fetch, true);
 }
 
 export const GET = handle;

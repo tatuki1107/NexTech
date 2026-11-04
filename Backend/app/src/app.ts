@@ -18,6 +18,7 @@ import { notificationRoutes } from "./routes/notifications";
 import { recommendationRoutes } from "./routes/recommendations";
 import { adminOperationsRoutes } from "./routes/admin-operations";
 import { adminAnalyticsRoutes } from "./routes/admin-analytics";
+import { organizerWorkspaceRoutes } from "./routes/organizer-workspace";
 
 export const createApp = () =>
   new Elysia()
@@ -93,6 +94,7 @@ export const createApp = () =>
         .use(publicRoutes)
         .use(registrationRoutes)
         .use(organizerRoutes)
+        .use(organizerWorkspaceRoutes)
         .use(organizerOperationsRoutes)
         .use(adminRoutes)
         .use(adminOperationsRoutes)

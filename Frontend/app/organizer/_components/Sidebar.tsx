@@ -14,24 +14,48 @@ type MenuItem = {
 
 // リンクは仮
 const menuItems: MenuItem[] = [
-  { label: "ダッシュボード", href: "/organizer", iconSrc: "/icons/dashboardIcon.svg" },
-  { label: "イベント管理", href: "/organizer/event-management", iconSrc: "/icons/eventManagementIcon.svg" },
-  { label: "申込管理", href: "/organizer/request-management", iconSrc: "/icons/requestManagementIcon.svg" },
-  { label: "当日受付", href: "/organizer/acceptance", iconSrc: "/icons/acceptanceIcon.svg" },
-  { label: "分析レポート", href: "/organizer/analytics-report", iconSrc: "/icons/analyticsReportIcon.svg" },
-  { label: "設定", href: "/organizer/settings", iconSrc: "/icons/settingsIcon_wh.svg" },
+  {
+    label: "ダッシュボード",
+    href: "/organizer",
+    iconSrc: "/icons/dashboardIcon.svg",
+  },
+  {
+    label: "イベント管理",
+    href: "/organizer/event-management",
+    iconSrc: "/icons/eventManagementIcon.svg",
+  },
+  {
+    label: "申込管理",
+    href: "/organizer/request-management",
+    iconSrc: "/icons/requestManagementIcon.svg",
+  },
+  {
+    label: "当日受付",
+    href: "/organizer/acceptance",
+    iconSrc: "/icons/acceptanceIcon.svg",
+  },
+  {
+    label: "分析レポート",
+    href: "/organizer/analytics-report",
+    iconSrc: "/icons/analyticsReportIcon.svg",
+  },
+  {
+    label: "設定",
+    href: "/organizer/settings",
+    iconSrc: "/icons/settingsIcon_wh.svg",
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 flex h-screen w-65 shrink-0 flex-col self-start bg-bg-accent-darkblue p-4 text-fg-inverse-primary">
-      <div className="flex items-center gap-2 mb-16 px-3 font-bold">
+    <nav className="flex w-full shrink-0 flex-col bg-bg-accent-darkblue p-4 text-fg-inverse-primary md:sticky md:top-0 md:h-screen md:w-65 md:self-start">
+      <div className="mb-4 flex items-center gap-2 px-3 font-bold md:mb-16">
         <div className="text-[36px] text-fg-brand-primary">N</div>
         <div className="text-[24px]">NexTech</div>
       </div>
-      <ul className="flex flex-1 flex-col items-center space-y-2 overflow-y-auto">
+      <ul className="flex flex-row items-center gap-2 overflow-x-auto md:flex-1 md:flex-col md:overflow-y-auto">
         {menuItems.map((item) => {
           const isActive =
             item.href === "/organizer"

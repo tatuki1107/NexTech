@@ -16,6 +16,11 @@ npm run build
 通常のURLは `http://localhost:3000` です。
 DB・Backend・Docker Composeの手順は [Contributing Guide](../CONTRIBUTING.md#3-ローカルでの起動) を参照してください。
 
+## 主催者画面のAPI接続
+
+イベント作成・編集・状態変更、申込管理、受付・受付取消、主催者分析、組織情報・個人通知設定を実APIへ接続しています。
+所属主催者を選択して操作します。接続範囲・権限制御・未対応機能は [主催者API接続仕様](../docs/ORGANIZER_API.md) を参照してください。
+
 ## 参加者画面のAPI接続
 
 ブラウザは同一オリジンの `/api/v1/*` に接続し、Next.jsがBackendへ中継します。
@@ -37,7 +42,8 @@ localStorageに認証情報を保存せず、従来の端末内ブックマー�
 app/
 ├── layout.tsx                   # 全画面共通のhtml/body
 ├── globals.css                  # Tailwind・全画面共通設定
-├── _lib/api-proxy.ts             # 参加者APIの許可範囲・Cookie・Origin確認
+├── _lib/api-proxy.ts             # 参加者・主催者APIの許可範囲・Cookie・Origin確認
+├── _lib/api.ts                   # 共通のHTTPクライアント・セッション更新・ページング
 ├── api/v1/[...path]/route.ts     # 同一オリジンのBackend中継
 ├── api/events/route.ts           # 従来の一覧中継（互換用）
 ├── (participant)/
@@ -61,7 +67,7 @@ app/
 │   ├── events/[id]/
 │   ├── saved/ / mypage/ / search/
 │   └── interests/ / notifications/ / settings/
-└── organizer/                   # 主催者画面。参加者接続とは別作業
+└── organizer/                   # 所属主催者の選択・イベント運営・分析・設定
 ```
 
 ページはルーティングと組み立てに留め、表示部品・API処理は役割に応じて分けます。
@@ -73,4 +79,5 @@ app/
 `test/api-proxy.test.mjs` は中継範囲、Origin、Cookie、認証情報の非公開を確認します。
 `test/api-client.test.mjs` は認証更新の同時実行、障害時の扱い、ページングを確認します。
 `test/event-search-filter.test.mjs` は検索条件・日付・APIタグ名を確認します。
+`test/organizer-api.test.mjs` は主催者中継範囲、下書き、日本時間・複数日開催、状態表示、CSVを確認します。
 ブラウザでの確認には実Backendと専用DBを使用し、通常のDBには検証用データを投入しません。

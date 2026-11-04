@@ -1,4 +1,9 @@
-export type EventStatus = "published" | "full" | "draft" | "ended";
+export type EventStatus =
+  | "published"
+  | "full"
+  | "draft"
+  | "ended"
+  | "cancelled";
 
 export type OrganizerEvent = {
   id: string;
