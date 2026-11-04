@@ -1,30 +1,12 @@
 import Link from "next/link";
 
+import { MOCK_EVENT_DETAIL } from "../../_mocks/events";
 import StatusBadge from "../_components/StatusBadge";
 import DetailCard from "../_components/detail/DetailCard";
 import DetailRow from "../_components/detail/DetailRow";
-import type { EventDetail } from "../_lib/event-detail";
-
-// 仮データ。APIができたら、URLのidで取得したイベントに置き換える
-const SAMPLE_EVENT: EventDetail = {
-  id: "1",
-  title: "React UI設計ワークショップ",
-  status: "published",
-  schedule: "2026/06/14(土) 13:00 - 16:00",
-  venue: "名古屋 / オンライン",
-  capacity: 40,
-  tags: ["フロントエンド", "初心者向け"],
-  description:
-    "コンポーネント設計とアクセシビリティの基礎を、演習形式で学びます。\n実際のUIを題材に、再利用しやすい設計とレビュー方法を身につけます。",
-  publishPeriod: "2026/05/01 12:00 〜 2026/06/12 23:59",
-  lastUpdated: "2026/05/01 17:30　山田 太郎",
-  applied: 32,
-  waitlisted: 0,
-  checkedIn: 16,
-};
 
 export default function EventDetailPage() {
-  const event = SAMPLE_EVENT;
+  const event = MOCK_EVENT_DETAIL;
 
   return (
     <div className="space-y-8">

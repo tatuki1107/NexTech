@@ -2,18 +2,10 @@
 
 import { useState } from "react";
 
-type Account = {
-  id: string;
-  name: string;
-  role: string;
-};
+import type { Account } from "../_lib/account";
+import { MOCK_ACCOUNTS } from "../_mocks/organization";
 
-// 仮データ。アカウント取得APIができたら置き換える
-const accounts: Account[] = [
-  { id: "yamada", name: "山田 太郎", role: "主催者アカウント" },
-  { id: "sato", name: "佐藤 二郎", role: "主催者アカウント" },
-  { id: "suzuki", name: "鈴木 花子", role: "主催者アカウント" },
-];
+const accounts = MOCK_ACCOUNTS;
 
 function AccountInfo({ account }: { account: Account }) {
   return (

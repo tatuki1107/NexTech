@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type NextEvent = {
+export type NextEvent = {
   title: string;
   schedule: string;
   applied: number;

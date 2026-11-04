@@ -1,35 +1,11 @@
 import Link from "next/link";
 
+import { MOCK_TODAY_EVENTS } from "../_mocks/events";
 import EventCard from "../event-management/_components/EventCard";
 import { CARD_BUTTON } from "../event-management/_lib/card-button";
 import { calculateRate } from "../event-management/_lib/event";
-import type { AcceptanceEvent } from "./_lib/acceptance";
 
-// 仮データ。APIができたら、本日開催のイベントを取得する形に置き換える
-const todayEvents: AcceptanceEvent[] = [
-  {
-    id: "1",
-    title: "React UI設計ワークショップ",
-    status: "published",
-    schedule: "6/14(土) 13:00 - 16:00",
-    venue: "名古屋 / オンライン",
-    applied: 32,
-    capacity: 40,
-    waitlisted: 0,
-    checkedIn: 10,
-  },
-  {
-    id: "2",
-    title: "LLMアプリ開発入門",
-    status: "published",
-    schedule: "6/14(土) 18:30 - 20:00",
-    venue: "オンライン",
-    applied: 40,
-    capacity: 40,
-    waitlisted: 12,
-    checkedIn: 0,
-  },
-];
+const todayEvents = MOCK_TODAY_EVENTS;
 
 export default function AcceptancePage() {
   return (
