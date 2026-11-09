@@ -6,10 +6,14 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getPublicEvents } from "../_lib/event-list";
-import { matchesEventFilters } from "../_lib/event-search-filter";
+import { matchesEventFilters, type EventFilters } from "../_lib/event-search-filter";
+import {
+  DEFAULT_EVENT_FILTERS,
+  readEventSearchQuery,
+  updateEventSearchQuery,
+} from "../_lib/event-search-query";
 import {
   getEventFormatLabel,
-  parseEventFormatFilter,
   type EventFormatFilter,
 } from "../_lib/event-format";
 import { EventCard } from "@/app/(participant)/_components/EventCard";
@@ -63,10 +67,10 @@ function sortEvents(events: ApiEvent[], sort: SortOption) {
 export function EventSearch() {
   const searchParams = useSearchParams();
   const [events, setEvents] = useState<ApiEvent[]>([]);
-  const [keyword, setKeyword] = useState(
-    () => searchParams.get("keyword") ?? "",
+  const [appliedFilters, setAppliedFilters] = useState(() =>
+    readEventSearchQuery(searchParams),
   );
-  const [date, setDate] = useState(() => searchParams.get("date") || "すべて");
+  const { keyword, date, tags: appliedTags, format: appliedFormat } = appliedFilters;
   const [tag, setTag] = useState("すべて");
   const [location, setLocation] = useState("すべて");
   const [modalState, setModalState] = useState<"closed" | "open" | "closing">("closed");
@@ -79,12 +83,6 @@ export function EventSearch() {
   const [advancedTags, setAdvancedTags] = useState<string[]>([]);
   const [advancedFormat, setAdvancedFormat] = useState<EventFormatFilter>("all");
   const [advancedSort, setAdvancedSort] = useState<SortOption>("おすすめ");
-  const [appliedTags, setAppliedTags] = useState<string[]>(
-    () => [...new Set(searchParams.get("tags")?.split(",").filter(Boolean))],
-  );
-  const [appliedFormat, setAppliedFormat] = useState(() =>
-    parseEventFormatFilter(searchParams.get("format")),
-  );
   const [appliedSort, setAppliedSort] = useState<SortOption>("おすすめ");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -198,31 +196,30 @@ export function EventSearch() {
   const closeAdvancedSearch = () => {
     setModalState((current) => current === "open" ? "closing" : current);
   };
-  const updateAppliedFormat = (format: EventFormatFilter) => {
-    setAppliedFormat(format);
+  const updateAppliedSearch = (changes: Partial<EventFilters>) => {
+    setAppliedFilters((current) => ({ ...current, ...changes }));
     const url = new URL(window.location.href);
-    if (!url.searchParams.has("format")) return;
-    if (format === "all") url.searchParams.delete("format");
-    else url.searchParams.set("format", format);
+    const updated = updateEventSearchQuery(url.searchParams, changes).toString();
+    if (updated === url.searchParams.toString()) return;
+    url.search = updated;
     window.history.replaceState(null, "", url);
   };
   const applyAdvancedSearch = () => {
-    setKeyword(advancedKeyword);
-    setDate(advancedDate === "日付指定" ? advancedSpecificDate : advancedDate);
+    updateAppliedSearch({
+      keyword: advancedKeyword,
+      date: advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
+      tags: advancedTags,
+      format: advancedFormat,
+    });
     setTag("すべて");
     setLocation("すべて");
-    setAppliedTags(advancedTags);
-    updateAppliedFormat(advancedFormat);
     setAppliedSort(advancedSort);
     closeAdvancedSearch();
   };
   const resetAppliedSearch = () => {
-    setKeyword("");
-    setDate("すべて");
+    updateAppliedSearch(DEFAULT_EVENT_FILTERS);
     setTag("すべて");
     setLocation("すべて");
-    setAppliedTags([]);
-    updateAppliedFormat("all");
     setAppliedSort("おすすめ");
     keywordInput.current?.focus();
   };
@@ -233,10 +230,10 @@ export function EventSearch() {
     clear: () => void;
   }[] = [];
   if (keyword.trim()) {
-    activeConditions.push({ id: "keyword", text: `キーワード：${keyword.trim()}`, clear: () => setKeyword("") });
+    activeConditions.push({ id: "keyword", text: `キーワード：${keyword.trim()}`, clear: () => updateAppliedSearch({ keyword: "" }) });
   }
   if (date !== "すべて") {
-    activeConditions.push({ id: "date", text: `開催日：${date}`, clear: () => setDate("すべて") });
+    activeConditions.push({ id: "date", text: `開催日：${date}`, clear: () => updateAppliedSearch({ date: "すべて" }) });
   }
   if (tag !== "すべて") {
     activeConditions.push({
@@ -249,7 +246,7 @@ export function EventSearch() {
     activeConditions.push({
       id: `tag:${appliedTag}`,
       text: `タグ：${appliedTag}`,
-      clear: () => setAppliedTags((current) => current.filter((item) => item !== appliedTag)),
+      clear: () => updateAppliedSearch({ tags: appliedTags.filter((item) => item !== appliedTag) }),
     });
   }
   if (location !== "すべて") {
@@ -257,7 +254,7 @@ export function EventSearch() {
   }
   const formatLabel = getEventFormatLabel(appliedFormat);
   if (formatLabel) {
-    activeConditions.push({ id: "format", text: `開催形式：${formatLabel}`, clear: () => updateAppliedFormat("all") });
+    activeConditions.push({ id: "format", text: `開催形式：${formatLabel}`, clear: () => updateAppliedSearch({ format: "all" }) });
   }
   if (appliedSort !== "おすすめ") {
     activeConditions.push({ id: "sort", text: `並び替え：${appliedSort}`, clear: () => setAppliedSort("おすすめ") });
@@ -271,13 +268,13 @@ export function EventSearch() {
           <input
             ref={keywordInput}
             value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
+            onChange={(event) => updateAppliedSearch({ keyword: event.target.value })}
             aria-label="イベント名、キーワードで検索"
             placeholder="イベント名、キーワードで検索"
           />
         </label>
         <div className="top-filter-row">
-          <EventQuickFilter label="開催日" value={date} choices={dates} onChange={setDate} />
+          <EventQuickFilter label="開催日" value={date} choices={dates} onChange={(value) => updateAppliedSearch({ date: value })} />
           <EventQuickFilter label="タグ" value={tag} choices={tags} onChange={setTag} />
           <EventQuickFilter label="場所" value={location} choices={locations} onChange={setLocation} />
         </div>

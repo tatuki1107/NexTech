@@ -16,12 +16,13 @@
 | UI-06 | 通知、興味・フォロー、設定、ログイン・新規登録を表示 | 対応する画面と、この検証データに該当する状態が表示される。フォームの送信や設定の変更はしない。 | 合格。[通知](screenshots/participant-test/participant-test-11-notifications.jpg)・[フォロー](screenshots/participant-test/participant-test-09-interests.jpg)・[設定](screenshots/participant-test/participant-test-10-settings.jpg)・[ログイン](screenshots/participant-test/participant-test-12-login.jpg)・[新規登録](screenshots/participant-test/participant-test-13-signup.jpg)。通知は未読データの表示を確認。 |
 | UI-07 | 詳細検索で複数条件を適用し、一覧上で1つずつ解除する | 解除した条件だけが消え、残りの条件と件数が更新される。0件でも個別解除できる。 | 合格。[スマホ幅390px](screenshots/participant-test/participant-applied-mobile.jpg)でキーワード・開催日・2タグ・形式・並び順を適用し、キーボードとクリックで個別に解除。[PC幅1100px](screenshots/participant-test/participant-applied-desktop.jpg)で2タグと開催形式を解除し、1→2→1→4件と更新。0→1件への復帰も確認。 |
 | UI-08 | 詳細検索で「会場」「オンライン」「ハイブリッド」をそれぞれ適用・解除する | 選択した形式のカードだけが表示され、解除すると全形式に戻る。他条件は残る。 | 合格。[スマホ幅390px](screenshots/participant-test/participant-format-filter-mobile.jpg)・[PC幅1100px](screenshots/participant-test/participant-format-filter-desktop.jpg)で会場1件・オンライン1件・ハイブリッド2件、各解除後は全4件。検索条件ページから指定したタグは、形式だけ解除して再読み込みしても残った。 |
+| UI-09 | URLから適用した条件の個別解除・一括クリア後にページを再読み込みする | 解除済み条件は復活しない。個別解除では残りの条件が、一括クリアでは無関係なURLパラメータが残る。 | 合格。Dockerタグの解除後に再読み込みしてもハイブリッド2件。一括クリア後は無関係な `source` だけが残り、再読み込み後も全4件。 |
 
 ## 自動テスト
 
 | ID | 手順 | 期待結果 | 結果 |
 | --- | --- | --- | --- |
-| AUTO-01 | Frontendで `npm run lint`、`npm run build`、`bun test` | Lint・型チェック・ビルド・既存テストと開催形式の回帰テストが通る。 | 合格。37件成功、0件失敗。 |
+| AUTO-01 | Frontendで `npm run lint`、`npm run build`、`bun test` | Lint・型チェック・ビルドと、開催形式・検索条件の再読み込みの回帰テストが通る。 | 合格。41件成功、0件失敗。 |
 | AUTO-02 | Backendで `bun run typecheck`、`bun run openapi:lint` | 型とOpenAPI契約の検査が通る。 | 合格。OpenAPIは61操作を検査。 |
 | AUTO-03 | 使い捨てのPostgreSQLへ `bun run db:migrate`、`RUN_DB_TESTS=1 TEST_DATABASE_URL=… bun test` | 実DBで認証・検索・保存・申込/取消などの回帰テストが通る。 | 合格。マイグレーション成功、70件成功、0件失敗。 |
 
