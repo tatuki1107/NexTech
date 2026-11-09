@@ -12,6 +12,31 @@ test("participant proxy does not expose organizer/admin mutations or arbitrary u
   assert.equal(isParticipantEndpoint("me/notifications/read-all", "PUT"), true);
   assert.equal(isParticipantEndpoint("auth/refresh", "GET"), false);
 });
+
+test("admin proxy allows only console reads and passes authorization through to the backend", async () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  for (const path of ["admin/events", `admin/organizers/${id}`, `admin/registrations/${id}`, "admin/moderation-actions"]) {
+    const response = await proxyParticipantApi(
+      request(path + "?page=2", "GET", { cookie: "nextechAccessToken=console-token" }),
+      path.split("/"),
+      async (url, init) => {
+        assert.equal(new URL(url).pathname, "/api/v1/" + path);
+        assert.equal(new URL(url).search, "?page=2");
+        assert.equal(new Headers(init.headers).get("authorization"), "Bearer console-token");
+        return Response.json({ error: { message: "Forbidden" } }, { status: 403 });
+      },
+    );
+    assert.equal(response.status, 403);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+  }
+  for (const [path, method] of [
+    [`admin/events/${id}/status`, "PATCH"], ["admin/reviews", "POST"], ["admin/events/not-an-id", "GET"],
+  ]) {
+    assert.equal((await proxyParticipantApi(
+      request(path, method), path.split("/"), () => { throw Error("must not fetch"); },
+    )).status, 404);
+  }
+});
 test("cookie-authenticated writes require the same origin including login/logout", async () => {
   for (const path of ["auth/login", "auth/logout", "me"]) {
     const method = path === "me" ? "PATCH" : "POST";

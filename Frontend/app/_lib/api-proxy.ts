@@ -25,6 +25,13 @@ export function isOrganizerEndpoint(path: string, method: string): boolean {
   );
 }
 
+export function isAdminEndpoint(path: string, method: string): boolean {
+  return method === "GET" && (
+    /^admin\/moderation-actions$/.test(path) ||
+    new RegExp(`^admin/(events|organizers|registrations)(/${uuid})?$`).test(path)
+  );
+}
+
 export function isParticipantEndpoint(path: string, method: string): boolean {
   const rules: Array<[string, RegExp]> = [
     ["POST", /^auth\/(signup|login|refresh|logout)$/],
@@ -68,7 +75,8 @@ export async function proxyParticipantApi(
   const path = segments.join("/");
   if (
     !isParticipantEndpoint(path, request.method) &&
-    !(includeOrganizer && isOrganizerEndpoint(path, request.method))
+    !(includeOrganizer && isOrganizerEndpoint(path, request.method)) &&
+    !isAdminEndpoint(path, request.method)
   )
     return error(404, "NOT_FOUND", "APIが見つかりません");
   const url = new URL(request.url);
