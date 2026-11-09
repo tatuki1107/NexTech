@@ -1,6 +1,6 @@
 import { BookmarkButton } from "@/app/(participant)/_components/BookmarkButton";
 import { EventAction } from "@/app/(participant)/_components/EventAction";
-import { EventImagePlaceholder } from "@/app/(participant)/_components/EventImagePlaceholder";
+import { EventImage } from "@/app/(participant)/_components/EventImage";
 import { ParticipantShell } from "@/app/(participant)/_components/ParticipantShell";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import FmdGoodOutlinedIcon from "@mui/icons-material/FmdGoodOutlined";
@@ -32,7 +32,7 @@ export function EventDetail({
     <ParticipantShell showBack>
       <article className="event-detail">
         <div className="detail-image-wrap">
-          <EventImagePlaceholder />
+          <EventImage eventId={event.id} detail />
           {!event.isArchived && (
             <BookmarkButton eventId={event.id} title={event.title} />
           )}

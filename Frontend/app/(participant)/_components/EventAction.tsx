@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiRequest, errorMessage } from "../_lib/api";
 import type { EventDetailData } from "../_lib/event-detail";
 import { useParticipant } from "./ParticipantProvider";
@@ -13,7 +13,8 @@ export function EventAction({
 }) {
   const session = useParticipant();
   const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const cancelDialog = useRef<HTMLDialogElement>(null);
+  const [cancelError, setCancelError] = useState("");
   const [message, setMessage] = useState("");
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -22,6 +23,7 @@ export function EventAction({
   }, []);
   const policy = getEventActionPolicy(event, now);
   const registered = policy.kind === "cancel";
+  const isFloatingApply = policy.kind === "apply" && !policy.disabledReason;
   async function submit() {
     if (!session.user) {
       window.location.assign(
@@ -29,12 +31,9 @@ export function EventAction({
       );
       return;
     }
-    if (registered && !confirming) {
-      setConfirming(true);
-      return;
-    }
     setBusy(true);
     setMessage("");
+    setCancelError("");
     try {
       const result = await apiRequest<{
         data: { status: string; waitlistPosition: number | null };
@@ -45,6 +44,7 @@ export function EventAction({
           ...(registered ? {} : { body: "{}" }),
         },
       );
+      if (registered) cancelDialog.current?.close();
       setMessage(
         registered
           ? "申込をキャンセルしました。"
@@ -55,14 +55,14 @@ export function EventAction({
       await session.reload();
       onChanged();
     } catch (error) {
-      setMessage(errorMessage(error));
+      if (registered && cancelDialog.current?.open) setCancelError(errorMessage(error));
+      else setMessage(errorMessage(error));
     } finally {
       setBusy(false);
-      setConfirming(false);
     }
   }
   return (
-    <div className="sticky-action">
+    <div className="event-action">
       {policy.kind === "history" ? (
         <p>現在公開されていないイベントの申込履歴です。</p>
       ) : (
@@ -73,32 +73,30 @@ export function EventAction({
           {event.registrationStatus === "waitlisted" && (
             <p>キャンセル待ちで申込済み</p>
           )}
-          {confirming && (
-            <div role="alert">
-              <p>このイベントへの申込をキャンセルしますか？</p>
-              <button
-                type="button"
-                onClick={() => setConfirming(false)}
-                disabled={busy}
-              >
-                戻る
-              </button>
-            </div>
-          )}
           <button
             type="button"
-            className="primary-button"
+            className={
+              isFloatingApply
+                ? "primary-button floating-apply-button"
+                : "primary-button"
+            }
             disabled={busy || session.loading || Boolean(policy.disabledReason)}
-            onClick={() => void submit()}
+            aria-haspopup={registered ? "dialog" : undefined}
+            onClick={() => {
+              if (registered && session.user) {
+                setCancelError("");
+                cancelDialog.current?.showModal();
+              } else {
+                void submit();
+              }
+            }}
           >
             {busy
               ? "処理中…"
               : policy.disabledReason
                 ? policy.disabledReason
                 : registered
-                  ? confirming
-                    ? "申込キャンセルを確定する"
-                    : "申込をキャンセルする"
+                  ? "申込をキャンセルする"
                   : !session.user
                     ? "ログインして申し込む"
                     : event.seatsLeft === 0
@@ -106,6 +104,39 @@ export function EventAction({
                       : "参加を申し込む"}
           </button>
         </>
+      )}
+      {registered && (
+        <dialog
+          ref={cancelDialog}
+          className="action-modal registration-cancel-dialog"
+          aria-labelledby="cancel-registration-title"
+          aria-describedby="cancel-registration-description"
+          onCancel={(event) => {
+            if (busy) event.preventDefault();
+          }}
+        >
+          <h2 id="cancel-registration-title">申込をキャンセルしますか？</h2>
+          <p id="cancel-registration-description">対象：{event.title}</p>
+          {cancelError && <p role="alert">{cancelError}</p>}
+          <div className="modal-actions">
+            <button
+              className="modal-secondary"
+              type="button"
+              onClick={() => cancelDialog.current?.close()}
+              disabled={busy}
+            >
+              申込を残す
+            </button>
+            <button
+              className="modal-danger"
+              type="button"
+              onClick={() => void submit()}
+              disabled={busy || Boolean(policy.disabledReason)}
+            >
+              {busy ? "処理中…" : "キャンセルを確定"}
+            </button>
+          </div>
+        </dialog>
       )}
       {message && <p role="status">{message}</p>}
     </div>

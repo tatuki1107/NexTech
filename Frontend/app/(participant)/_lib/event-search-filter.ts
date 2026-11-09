@@ -1,3 +1,5 @@
+import { matchesEventFormat, type EventFormatFilter } from "./event-format";
+
 export function matchesDateFilter(eventDate: Date, filter: string) {
   if (filter === "すべて") return true;
   if (/^\d{4}-\d{2}-\d{2}$/.test(filter)) {
@@ -37,7 +39,7 @@ export type EventFilters = {
   keyword: string;
   date: string;
   tags: string[];
-  format: string;
+  format: EventFormatFilter;
 };
 
 export function matchesEventFilters(
@@ -52,10 +54,7 @@ export function matchesEventFilters(
       [event.categoryName, ...(event.tagNames ?? [])].some((tag) =>
         filters.tags.includes(tag),
       )) &&
-    (filters.format === "すべて" ||
-      (filters.format === "オンライン"
-        ? event.format === "online"
-        : event.format !== "online")) &&
+    matchesEventFormat(event.format, filters.format) &&
     matchesDateFilter(new Date(event.startAt), filters.date)
   );
 }

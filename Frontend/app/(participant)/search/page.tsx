@@ -4,6 +4,8 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getPublicEvents } from "../_lib/event-list";
+import { matchesEventFormat, type EventFormatFilter } from "../_lib/event-format";
+import { EventFormatOptions } from "../_components/EventFormatOptions";
 import { ParticipantShell } from "@/app/(participant)/_components/ParticipantShell";
 
 const dates = ["すべて", "今週", "今月", "日付指定"];
@@ -51,7 +53,7 @@ export default function SearchPage() {
   const [keyword, setKeyword] = useState("");
   const [selectedDate, setSelectedDate] = useState("すべて");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedFormat, setSelectedFormat] = useState("すべて");
+  const [selectedFormat, setSelectedFormat] = useState<EventFormatFilter>("all");
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const tags = [
     ...new Set(
@@ -74,13 +76,13 @@ export default function SearchPage() {
     setKeyword("");
     setSelectedDate("すべて");
     setSelectedTags([]);
-    setSelectedFormat("すべて");
+    setSelectedFormat("all");
   };
   const query = new URLSearchParams({
     ...(keyword ? { keyword } : {}),
     ...(selectedDate !== "すべて" ? { date: selectedDate } : {}),
     ...(selectedTags.length > 0 ? { tags: selectedTags.join(",") } : {}),
-    ...(selectedFormat !== "すべて" ? { format: selectedFormat } : {}),
+    ...(selectedFormat !== "all" ? { format: selectedFormat } : {}),
   });
   const resultHref = query.size > 0 ? `/?${query.toString()}` : "/";
   useEffect(() => {
@@ -104,11 +106,7 @@ export default function SearchPage() {
           [event.categoryName, ...(event.tagNames ?? [])].some((tag) =>
             selectedTags.includes(tag),
           );
-        const hasMatchingFormat =
-          selectedFormat === "すべて" ||
-          (selectedFormat === "オンライン"
-            ? event.format === "online"
-            : event.format !== "online");
+        const hasMatchingFormat = matchesEventFormat(event.format, selectedFormat);
         return (
           searchableText.includes(keyword.toLowerCase()) &&
           hasMatchingTag &&
@@ -171,18 +169,7 @@ export default function SearchPage() {
           ))}
         </div>
         <h2>開催形式</h2>
-        <div className="date-chip-grid">
-          {["すべて", "オンライン", "会場開催"].map((format) => (
-            <button
-              className={selectedFormat === format ? "is-selected" : ""}
-              type="button"
-              key={format}
-              onClick={() => setSelectedFormat(format)}
-            >
-              {format}
-            </button>
-          ))}
-        </div>
+        <EventFormatOptions value={selectedFormat} onChange={setSelectedFormat} />
         <p className="search-condition-count">
           {isLoading
             ? "イベントを検索しています"

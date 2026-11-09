@@ -3,12 +3,18 @@
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import type { ChangeEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getPublicEvents } from "../_lib/event-list";
 import { matchesEventFilters } from "../_lib/event-search-filter";
+import {
+  getEventFormatLabel,
+  parseEventFormatFilter,
+  type EventFormatFilter,
+} from "../_lib/event-format";
 import { EventCard } from "@/app/(participant)/_components/EventCard";
+import { EventQuickFilter } from "./EventQuickFilter";
+import { EventFormatOptions } from "./EventFormatOptions";
 
 type ApiEvent = {
   tagNames?: string[];
@@ -60,26 +66,34 @@ export function EventSearch() {
   const [keyword, setKeyword] = useState(
     () => searchParams.get("keyword") ?? "",
   );
-  const [date, setDate] = useState(() => searchParams.get("date") ?? "すべて");
+  const [date, setDate] = useState(() => searchParams.get("date") || "すべて");
   const [tag, setTag] = useState("すべて");
   const [location, setLocation] = useState("すべて");
-  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
+  const [modalState, setModalState] = useState<"closed" | "open" | "closing">("closed");
+  const advancedSearchTrigger = useRef<HTMLButtonElement>(null);
+  const advancedSearchClose = useRef<HTMLButtonElement>(null);
+  const keywordInput = useRef<HTMLInputElement>(null);
   const [advancedKeyword, setAdvancedKeyword] = useState("");
   const [advancedDate, setAdvancedDate] = useState("すべて");
   const [advancedSpecificDate, setAdvancedSpecificDate] = useState("");
   const [advancedTags, setAdvancedTags] = useState<string[]>([]);
-  const [advancedFormat, setAdvancedFormat] = useState("すべて");
+  const [advancedFormat, setAdvancedFormat] = useState<EventFormatFilter>("all");
   const [advancedSort, setAdvancedSort] = useState<SortOption>("おすすめ");
   const [appliedTags, setAppliedTags] = useState<string[]>(
-    () => searchParams.get("tags")?.split(",").filter(Boolean) ?? [],
+    () => [...new Set(searchParams.get("tags")?.split(",").filter(Boolean))],
   );
-  const [appliedFormat, setAppliedFormat] = useState(() => {
-    const format = searchParams.get("format");
-    return format === "オンライン" || format === "会場開催" ? format : "すべて";
-  });
+  const [appliedFormat, setAppliedFormat] = useState(() =>
+    parseEventFormatFilter(searchParams.get("format")),
+  );
   const [appliedSort, setAppliedSort] = useState<SortOption>("おすすめ");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (modalState === "open") {
+      advancedSearchClose.current?.focus({ preventScroll: true });
+    }
+  }, [modalState]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,10 +172,6 @@ export function EventSearch() {
         .filter(Boolean),
     ),
   );
-  const selectChangeHandler =
-    (setter: (value: string) => void) =>
-    (event: ChangeEvent<HTMLSelectElement>) =>
-      setter(event.target.value);
   const toggleAdvancedTag = (targetTag: string) => {
     setAdvancedTags((current) =>
       current.includes(targetTag)
@@ -182,8 +192,19 @@ export function EventSearch() {
     setAdvancedDate("すべて");
     setAdvancedSpecificDate("");
     setAdvancedTags([]);
-    setAdvancedFormat("すべて");
+    setAdvancedFormat("all");
     setAdvancedSort("おすすめ");
+  };
+  const closeAdvancedSearch = () => {
+    setModalState((current) => current === "open" ? "closing" : current);
+  };
+  const updateAppliedFormat = (format: EventFormatFilter) => {
+    setAppliedFormat(format);
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("format")) return;
+    if (format === "all") url.searchParams.delete("format");
+    else url.searchParams.set("format", format);
+    window.history.replaceState(null, "", url);
   };
   const applyAdvancedSearch = () => {
     setKeyword(advancedKeyword);
@@ -191,10 +212,56 @@ export function EventSearch() {
     setTag("すべて");
     setLocation("すべて");
     setAppliedTags(advancedTags);
-    setAppliedFormat(advancedFormat);
+    updateAppliedFormat(advancedFormat);
     setAppliedSort(advancedSort);
-    setIsAdvancedSearchOpen(false);
+    closeAdvancedSearch();
   };
+  const resetAppliedSearch = () => {
+    setKeyword("");
+    setDate("すべて");
+    setTag("すべて");
+    setLocation("すべて");
+    setAppliedTags([]);
+    updateAppliedFormat("all");
+    setAppliedSort("おすすめ");
+    keywordInput.current?.focus();
+  };
+
+  const activeConditions: {
+    id: string;
+    text: string;
+    clear: () => void;
+  }[] = [];
+  if (keyword.trim()) {
+    activeConditions.push({ id: "keyword", text: `キーワード：${keyword.trim()}`, clear: () => setKeyword("") });
+  }
+  if (date !== "すべて") {
+    activeConditions.push({ id: "date", text: `開催日：${date}`, clear: () => setDate("すべて") });
+  }
+  if (tag !== "すべて") {
+    activeConditions.push({
+      id: "quick-tag",
+      text: `${appliedTags.length ? "タグ（簡易）" : "タグ"}：${tag}`,
+      clear: () => setTag("すべて"),
+    });
+  }
+  for (const appliedTag of appliedTags) {
+    activeConditions.push({
+      id: `tag:${appliedTag}`,
+      text: `タグ：${appliedTag}`,
+      clear: () => setAppliedTags((current) => current.filter((item) => item !== appliedTag)),
+    });
+  }
+  if (location !== "すべて") {
+    activeConditions.push({ id: "location", text: `場所：${location}`, clear: () => setLocation("すべて") });
+  }
+  const formatLabel = getEventFormatLabel(appliedFormat);
+  if (formatLabel) {
+    activeConditions.push({ id: "format", text: `開催形式：${formatLabel}`, clear: () => updateAppliedFormat("all") });
+  }
+  if (appliedSort !== "おすすめ") {
+    activeConditions.push({ id: "sort", text: `並び替え：${appliedSort}`, clear: () => setAppliedSort("おすすめ") });
+  }
 
   return (
     <>
@@ -202,49 +269,23 @@ export function EventSearch() {
         <label className="top-search-input">
           <SearchOutlinedIcon />
           <input
+            ref={keywordInput}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            aria-label="イベント名、キーワードで検索"
             placeholder="イベント名、キーワードで検索"
           />
         </label>
         <div className="top-filter-row">
-          <label>
-            <span>開催日</span>
-            <select value={date} onChange={selectChangeHandler(setDate)}>
-              <option>すべて</option>
-              {!["すべて", ...dates].includes(date) && (
-                <option value={date}>{date}</option>
-              )}
-              {dates.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>タグ</span>
-            <select value={tag} onChange={selectChangeHandler(setTag)}>
-              <option>すべて</option>
-              {tags.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>場所</span>
-            <select
-              value={location}
-              onChange={selectChangeHandler(setLocation)}
-            >
-              <option>すべて</option>
-              {locations.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
+          <EventQuickFilter label="開催日" value={date} choices={dates} onChange={setDate} />
+          <EventQuickFilter label="タグ" value={tag} choices={tags} onChange={setTag} />
+          <EventQuickFilter label="場所" value={location} choices={locations} onChange={setLocation} />
         </div>
         <button
+          ref={advancedSearchTrigger}
           className="advanced-search-link"
           type="button"
+          aria-haspopup="dialog"
           onClick={() => {
             setAdvancedKeyword(keyword);
             setAdvancedDate(
@@ -255,36 +296,63 @@ export function EventSearch() {
             );
             setAdvancedTags(tag === "すべて" ? appliedTags : [tag]);
             setAdvancedFormat(
-              location === "オンライン" ? "オンライン" : appliedFormat,
+              appliedFormat === "all" && location === "オンライン" ? "online" : appliedFormat,
             );
             setAdvancedSort(appliedSort);
-            setIsAdvancedSearchOpen(true);
+            setModalState("open");
           }}
         >
           <FilterAltOutlinedIcon />
           検索条件を詳しく設定
         </button>
       </section>
-      {isAdvancedSearchOpen ? (
+      {modalState !== "closed" ? (
         <div
           className="search-modal-backdrop"
+          data-closing={modalState === "closing" || undefined}
           role="presentation"
-          onClick={() => setIsAdvancedSearchOpen(false)}
+          onClick={closeAdvancedSearch}
+          onAnimationEnd={(event) => {
+            if (event.target !== event.currentTarget || modalState !== "closing") return;
+            setModalState("closed");
+            advancedSearchTrigger.current?.focus({ preventScroll: true });
+          }}
         >
           <section
             className="top-search-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="advanced-search-title"
+            inert={modalState === "closing"}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                closeAdvancedSearch();
+              }
+              if (event.key !== "Tab") return;
+              const controls = event.currentTarget.querySelectorAll<HTMLElement>(
+                "button:not(:disabled), input:not(:disabled)",
+              );
+              const first = controls[0];
+              const last = controls[controls.length - 1];
+              if (event.shiftKey && event.target === first) {
+                event.preventDefault();
+                last?.focus();
+              } else if (!event.shiftKey && event.target === last) {
+                event.preventDefault();
+                first?.focus();
+              }
+            }}
           >
             <div className="modal-handle" />
             <header>
               <h2 id="advanced-search-title">検索条件</h2>
               <button
+                ref={advancedSearchClose}
                 type="button"
                 aria-label="検索条件を閉じる"
-                onClick={() => setIsAdvancedSearchOpen(false)}
+                onClick={closeAdvancedSearch}
               >
                 <CloseOutlinedIcon />
               </button>
@@ -306,6 +374,7 @@ export function EventSearch() {
                 {["すべて", "今週", "今月", "日付指定"].map((item) => (
                   <button
                     className={advancedDate === item ? "is-selected" : ""}
+                    aria-pressed={advancedDate === item}
                     type="button"
                     key={item}
                     onClick={() => setAdvancedDate(item)}
@@ -331,6 +400,7 @@ export function EventSearch() {
                 {tags.map((item) => (
                   <button
                     className={`filter-chip ${advancedTags.includes(item) ? "is-selected" : ""}`}
+                    aria-pressed={advancedTags.includes(item)}
                     type="button"
                     key={item}
                     onClick={() => toggleAdvancedTag(item)}
@@ -340,24 +410,14 @@ export function EventSearch() {
                 ))}
               </div>
               <h3>開催形式</h3>
-              <div className="date-chip-grid modal-format-grid">
-                {["すべて", "オンライン", "会場開催"].map((item) => (
-                  <button
-                    className={advancedFormat === item ? "is-selected" : ""}
-                    type="button"
-                    key={item}
-                    onClick={() => setAdvancedFormat(item)}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
+              <EventFormatOptions value={advancedFormat} onChange={setAdvancedFormat} />
               <h3>並び替え</h3>
               <div className="date-chip-grid modal-sort-grid">
                 {(["おすすめ", "申し込み期間", "残席順"] as SortOption[]).map(
                   (item) => (
                     <button
                       className={advancedSort === item ? "is-selected" : ""}
+                      aria-pressed={advancedSort === item}
                       type="button"
                       key={item}
                       onClick={() => setAdvancedSort(item)}
@@ -391,8 +451,33 @@ export function EventSearch() {
       <section className="section-block" aria-labelledby="event-list-title">
         <div className="section-heading">
           <h2 id="event-list-title">おすすめイベント</h2>
-          <span className="result-count">{filteredEvents.length}件</span>
+          <span className="result-count" role="status">{filteredEvents.length}件</span>
         </div>
+        {activeConditions.length > 0 && (
+          <div className="applied-search">
+            <h3 id="applied-search-title">適用中の条件</h3>
+            <ul aria-labelledby="applied-search-title">
+              {activeConditions.map((condition) => (
+                <li key={condition.id}>
+                  <button
+                    type="button"
+                    aria-label={`${condition.text}を解除`}
+                    onClick={(event) => {
+                      const item = event.currentTarget.parentElement;
+                      const sibling = item?.nextElementSibling ?? item?.previousElementSibling;
+                      const target = sibling?.querySelector("button") ?? advancedSearchTrigger.current;
+                      condition.clear();
+                      target?.focus({ preventScroll: true });
+                    }}
+                  >
+                    <span>{condition.text}</span>
+                    <CloseOutlinedIcon aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {isLoading ? (
           <p className="empty-state" role="status">
             イベントを読み込み中…
@@ -406,17 +491,21 @@ export function EventSearch() {
                 eventId={event.id}
                 title={event.title}
                 date={formatEventDate(event.startAt, event.endAt)}
-                location={
-                  event.format === "online"
-                    ? "オンライン"
-                    : (event.venueName ?? "会場未定")
-                }
+                format={event.format}
+                venueName={event.venueName}
                 category={event.categoryName}
                 seatsLeft={event.seatsLeft}
                 organizer={event.organizerName}
                 key={event.id}
               />
             ))}
+          </div>
+        ) : events.length > 0 ? (
+          <div className="empty-state search-empty-state">
+            <p role="status">検索条件に一致するイベントがありません。</p>
+            <button type="button" className="reset-filter-button" onClick={resetAppliedSearch}>
+              検索条件をクリア
+            </button>
           </div>
         ) : (
           <p className="empty-state">
