@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useParticipant } from "./ParticipantProvider";
 import type { ReactNode } from "react";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
@@ -45,12 +46,23 @@ export function ParticipantShell({
   title,
   showBack = false,
 }: ParticipantShellProps) {
+  const router = useRouter();
   const { unreadCount } = useParticipant();
   return (
     <div className="user-app">
       <header className="user-header">
         {showBack ? (
-          <Link className="back-link" href="/" aria-label="イベント一覧へ戻る">
+          <Link
+            className="back-link"
+            href="/"
+            replace
+            onNavigate={(event) => {
+              const { navigation } = window as Window & { navigation?: { canGoBack: boolean } };
+              if (!(navigation?.canGoBack ?? window.history.length > 1)) return;
+              event.preventDefault();
+              router.back();
+            }}
+          >
             <ArrowBackIosNewRoundedIcon /> 戻る
           </Link>
         ) : (
@@ -79,6 +91,7 @@ export function ParticipantShell({
           <Link
             className={`bottom-navigation-item ${active === item.id ? "is-active" : ""}`}
             href={item.href}
+            aria-current={active === item.id ? "page" : undefined}
             key={item.id}
           >
             <span aria-hidden="true">{item.icon}</span>

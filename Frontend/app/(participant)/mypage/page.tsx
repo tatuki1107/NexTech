@@ -16,17 +16,20 @@ export default function MyPage() {
           </Link>
         </div>
         <MyEvents />
-        <section className="account-shortcuts">
-          <Link href="/interests">
-            <FavoriteBorderOutlinedIcon />
-            <span>興味・フォロー管理</span>
-            <b>›</b>
-          </Link>
-          <Link href="/notifications">
-            <NotificationsNoneOutlinedIcon />
-            <span>通知</span>
-            <b>›</b>
-          </Link>
+        <section className="account-shortcuts" aria-labelledby="account-shortcuts-title">
+          <h2 id="account-shortcuts-title">アカウントメニュー</h2>
+          <div className="account-shortcut-list">
+            <Link href="/interests">
+              <span className="account-shortcut-icon" aria-hidden="true"><FavoriteBorderOutlinedIcon /></span>
+              <span>興味・フォロー管理</span>
+              <span className="account-shortcut-arrow" aria-hidden="true">›</span>
+            </Link>
+            <Link href="/notifications">
+              <span className="account-shortcut-icon" aria-hidden="true"><NotificationsNoneOutlinedIcon /></span>
+              <span>通知</span>
+              <span className="account-shortcut-arrow" aria-hidden="true">›</span>
+            </Link>
+          </div>
         </section>
       </section>
     </ParticipantShell>
