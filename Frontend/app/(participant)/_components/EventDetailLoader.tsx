@@ -25,6 +25,7 @@ function RegistrationDetail({ id }: { id: string }) {
       onChanged={reload}
       event={{
         ...registration.event,
+        effectiveStartAt: registration.effectiveStartAt,
         registrationStatus:
           registration.status === "cancelled" ? null : registration.status,
         isArchived: true,

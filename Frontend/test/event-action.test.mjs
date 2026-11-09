@@ -14,8 +14,11 @@ test("unpublished details never offer a new or repeat application", () => {
     assert.equal(getEventActionPolicy({ ...event, registrationStatus }, now).kind, "history");
   }
 });
-test("removing an unpublished event's schedule does not block cancellation", () => {
-  assert.equal(getEventActionPolicy({ ...event, startAt: null, registrationStatus: "confirmed" }, now).kind, "cancel");
+test("a cleared schedule uses the previous start to decide whether cancellation is available", () => {
+  const registration = { ...event, startAt: null, registrationStatus: "confirmed" };
+  assert.equal(getEventActionPolicy({ ...registration, effectiveStartAt: event.startAt }, now).kind, "cancel");
+  assert.equal(getEventActionPolicy({ ...registration, effectiveStartAt: "2000-01-01T10:00:00Z" }, now).kind, "history");
+  assert.equal(getEventActionPolicy({ ...registration, effectiveStartAt: null }, now).kind, "history");
 });
 test("past unpublished registrations remain read-only", () => {
   assert.equal(getEventActionPolicy({ ...event, startAt: "2020-01-01T00:00:00Z", registrationStatus: "confirmed" }, now).kind, "history");

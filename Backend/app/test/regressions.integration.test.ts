@@ -69,9 +69,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       await registerPair(eventId);
     });
 
-    test("a participant keeps and can cancel a registration after the event is hidden and its category is removed", async () => {
-      const id = await createEvent();
-      await registerPair(id);
+    const hideAndClearSchedule = async (id: string) => {
       const stopped = await call(`/api/v1/admin/events/${id}/status`, "PATCH", ownerToken, {
         status: "draft", reason: "Review fixture",
       });
@@ -80,20 +78,48 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
         expectedVersion: stopped.body.data.version, categoryId: null, startAt: null, endAt: null,
       });
       expect(edited.status).toBe(200);
+    };
+
+    test("a future registration remains visible and cancellable after the category and dates are removed", async () => {
+      const id = await createEvent();
+      await registerPair(id);
+      await hideAndClearSchedule(id);
       expect((await call(`/api/v1/events/${id}`, "GET", firstToken)).status).toBe(404);
       const upcoming = await call("/api/v1/me/registrations?view=upcoming", "GET", firstToken);
       expect(upcoming.status).toBe(200);
       expect(upcoming.body.data).toContainEqual(expect.objectContaining({
         eventId: id,
         status: "confirmed",
+        effectiveStartAt: expect.any(String),
         event: expect.objectContaining({ category: null, startAt: null }),
       }));
+      const row = upcoming.body.data.find((row: { eventId: string }) => row.eventId === id);
+      expect(Date.parse(row.effectiveStartAt)).toBe(Date.parse("2099-01-01T10:00:00Z"));
       const cancelled = await call(`/api/v1/events/${id}/registration`, "DELETE", firstToken);
       expect(cancelled.status).toBe(200);
       const history = await call("/api/v1/me/registrations?view=cancelled", "GET", firstToken);
       expect(history.body.data).toContainEqual(expect.objectContaining({ eventId: id, status: "cancelled" }));
       const [waiting] = await sqlClient`SELECT status FROM registrations WHERE event_id=${id} AND user_id=${second}`;
       expect(waiting.status).toBe("waitlisted");
+    });
+
+    test("a started event stays in participation history and cannot be cancelled after its dates are removed", async () => {
+      const id = await createEvent("published", true);
+      await registerPair(id);
+      await hideAndClearSchedule(id);
+      const upcoming = await call("/api/v1/me/registrations?view=upcoming", "GET", firstToken);
+      expect(upcoming.status).toBe(200);
+      expect(upcoming.body.data).not.toContainEqual(expect.objectContaining({ eventId: id }));
+      const past = await call("/api/v1/me/registrations?view=past", "GET", firstToken);
+      expect(past.status).toBe(200);
+      const row = past.body.data.find((row: { eventId: string }) => row.eventId === id);
+      expect(row).toMatchObject({ status: "confirmed", event: { startAt: null } });
+      expect(Date.parse(row.effectiveStartAt)).toBe(Date.parse("2000-01-01T10:00:00Z"));
+      const cancelled = await call(`/api/v1/events/${id}/registration`, "DELETE", firstToken);
+      expect(cancelled.status).toBe(422);
+      expect(cancelled.body.error.code).toBe("BUSINESS_RULE_ERROR");
+      const [registration] = await sqlClient`SELECT status FROM registrations WHERE event_id=${id} AND user_id=${first}`;
+      expect(registration.status).toBe("confirmed");
     });
 
     test("valid single and multiple UUID tag filters work", async () => {

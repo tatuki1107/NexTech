@@ -31,6 +31,7 @@ export type ParticipantEvent = {
 };
 export type Registration = {
   id: string;
+  effectiveStartAt?: string | null;
   status: string;
   eventId: string;
   waitlistPosition: number | null;

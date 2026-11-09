@@ -5,6 +5,7 @@ export type EventDetailData = {
   format: string | null;
   venueName: string | null;
   startAt: string | null;
+  effectiveStartAt?: string | null;
   endAt: string | null;
   applicationDeadline: string | null;
   capacity: number | null;

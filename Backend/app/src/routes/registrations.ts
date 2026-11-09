@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { sqlClient } from "../db";
+import { REGISTRATION_START_SQL } from "../services/registration-schedule";
 import { getCurrentUser } from "../lib/auth";
 import { ApiError, notFound } from "../lib/errors";
 import { assertRateLimit } from "../lib/rate-limit";
@@ -135,9 +136,18 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
         const [event] =
           await tx`SELECT id,status,start_at,organizer_id FROM events WHERE id=${params.eventId} FOR UPDATE`;
         if (!event) throw notFound("イベントが見つかりません");
+        // Read the audit history after acquiring the event lock, so a schedule
+        // cleared by a concurrent edit is visible in this statement's snapshot.
+        const startAt = event.start_at ?? (await tx.unsafe(
+          `SELECT ${REGISTRATION_START_SQL} AS start_at FROM events e WHERE e.id=$1`,
+          [params.eventId],
+        ))[0]?.start_at;
+        if (startAt == null && event.status !== "completed") {
+          throw new ApiError(422, "BUSINESS_RULE_ERROR", "開催開始日時を確認できないためキャンセルできません");
+        }
         if (
           event.status === "completed" ||
-          (event.start_at !== null && new Date(event.start_at as string) <= new Date())
+          new Date(startAt as string) <= new Date()
         ) {
           throw new ApiError(
             422,
