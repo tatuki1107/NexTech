@@ -35,6 +35,7 @@ export default function EventForm({
   const [knownTags, setKnownTags] = useState<Taxonomy[]>(
     initialEvent?.tags ?? [],
   );
+  const canPublish = !initialEvent || initialEvent.status === "draft";
   const categories = useResource<Taxonomy[]>("/categories");
   const tags = useResource<Taxonomy[]>(
     "/tags?keyword=" + encodeURIComponent(tagSearch),
@@ -49,8 +50,8 @@ export default function EventForm({
     setBusy(true);
     setError("");
     try {
-      const body = eventPayload(values);
       const current = saved.current;
+      const body = eventPayload(values, current);
       const response = await apiRequest<{ data: ManagedEvent }>(
         current
           ? `/events/${current.id}`
@@ -64,7 +65,7 @@ export default function EventForm({
         },
       );
       saved.current = response.data;
-      if (publish && response.data.status !== "published") {
+      if (publish && response.data.status === "draft") {
         const published = await changeStatus(response.data.id, "published");
         saved.current = published.data;
       }
@@ -83,7 +84,7 @@ export default function EventForm({
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void save(true);
+    void save(canPublish);
   }
   if (!categories.data)
     return (
@@ -267,24 +268,22 @@ export default function EventForm({
         </div>
       )}
       <div className="flex gap-4">
-        <button
-          type="button"
-          disabled={busy || !values.title.trim()}
-          className={CONTROL}
-          onClick={() => void save(false)}
-        >
-          {busy
-            ? "保存中…"
-            : initialEvent?.status === "published"
-              ? "保存"
-              : "下書き保存"}
-        </button>
+        {canPublish && (
+          <button
+            type="button"
+            disabled={busy || !values.title.trim()}
+            className={CONTROL}
+            onClick={() => void save(false)}
+          >
+            下書き保存
+          </button>
+        )}
         <button
           type="submit"
           disabled={busy || !values.title.trim()}
           className={BUTTON}
         >
-          保存して公開する
+          {busy ? "保存中…" : canPublish ? "保存して公開する" : "保存"}
         </button>
       </div>
       <ConfirmDialog

@@ -106,6 +106,53 @@ test("form validation rejects inverted ranges and fractional capacities", () => 
     }),
   );
 });
+test("editing the description preserves precise timestamps from the API", () => {
+  const event = {
+    title: "Existing event",
+    description: "Before",
+    tags: [],
+    startAt: "2099-01-01T01:00:10.125Z",
+    endAt: "2099-01-01T01:00:50.500Z",
+    applicationStartAt: "2098-12-30T02:00:25Z",
+    applicationDeadline: "2098-12-31T02:00:59.999Z",
+  };
+  const payload = JSON.parse(
+    JSON.stringify(
+      eventPayload({ ...eventFormValues(event), description: "After" }, event),
+    ),
+  );
+  assert.equal(payload.description, "After");
+  for (const key of [
+    "startAt",
+    "endAt",
+    "applicationStartAt",
+    "applicationDeadline",
+  ]) {
+    assert.equal(Object.hasOwn(payload, key), false);
+  }
+});
+test("editing timestamps supports explicit clears and checks the unchanged end time", () => {
+  const event = {
+    title: "Existing event",
+    description: "",
+    tags: [],
+    startAt: "2099-01-01T01:00:10Z",
+    endAt: "2099-01-01T02:00:50Z",
+    applicationDeadline: "2098-12-31T02:00:59Z",
+  };
+  const values = eventFormValues(event);
+  const payload = eventPayload(
+    { ...values, startTime: "11:00", applicationDeadline: "" },
+    event,
+  );
+  assert.equal(payload.startAt, "2099-01-01T02:00:00.000Z");
+  assert.equal(payload.endAt, undefined);
+  assert.equal(payload.applicationDeadline, null);
+  assert.throws(
+    () => eventPayload({ ...values, startTime: "11:01" }, event),
+    /終了日時は開始日時より後/,
+  );
+});
 test("API event and registration statuses retain their meanings in the UI", () => {
   assert.equal(
     eventView({ status: "cancelled", tags: [], confirmedCount: 0 }).status,

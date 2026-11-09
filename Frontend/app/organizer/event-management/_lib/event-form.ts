@@ -68,18 +68,35 @@ export function eventFormValues(event: ManagedEvent): EventFormValues {
     waitlistEnabled: event.waitlistEnabled,
   };
 }
-export function eventPayload(values: EventFormValues) {
+export function eventPayload(values: EventFormValues, current?: ManagedEvent) {
   const timestamp = (value: string) =>
     new Date(value + ":00+09:00").toISOString();
+  // The form displays minutes. Omit untouched timestamps from PATCH to keep
+  // the exact database values, including seconds and fractional seconds.
+  const previous = current && eventFormValues(current);
+  const startUnchanged =
+    previous?.date === values.date && previous.startTime === values.startTime;
+  const endUnchanged =
+    previous?.endDate === values.endDate && previous.endTime === values.endTime;
   const start =
-    values.date && values.startTime
-      ? timestamp(values.date + "T" + values.startTime)
-      : null;
+    startUnchanged
+      ? undefined
+      : values.date && values.startTime
+        ? timestamp(values.date + "T" + values.startTime)
+        : null;
   const end =
-    values.endDate && values.endTime
-      ? timestamp(values.endDate + "T" + values.endTime)
-      : null;
-  if (start && end && start >= end)
+    endUnchanged
+      ? undefined
+      : values.endDate && values.endTime
+        ? timestamp(values.endDate + "T" + values.endTime)
+        : null;
+  const effectiveStart = startUnchanged ? current?.startAt : start;
+  const effectiveEnd = endUnchanged ? current?.endAt : end;
+  if (
+    effectiveStart &&
+    effectiveEnd &&
+    Date.parse(effectiveStart) >= Date.parse(effectiveEnd)
+  )
     throw new Error("終了日時は開始日時より後にしてください");
   if (
     values.capacity &&
@@ -101,12 +118,18 @@ export function eventPayload(values: EventFormValues) {
     capacity: values.capacity ? Number(values.capacity) : null,
     tagIds: values.tags,
     waitlistEnabled: values.waitlistEnabled,
-    applicationStartAt: values.applicationStart
-      ? timestamp(values.applicationStart)
-      : null,
-    applicationDeadline: values.applicationDeadline
-      ? timestamp(values.applicationDeadline)
-      : null,
+    applicationStartAt:
+      previous?.applicationStart === values.applicationStart
+        ? undefined
+        : values.applicationStart
+          ? timestamp(values.applicationStart)
+          : null,
+    applicationDeadline:
+      previous?.applicationDeadline === values.applicationDeadline
+        ? undefined
+        : values.applicationDeadline
+          ? timestamp(values.applicationDeadline)
+          : null,
     participationConditions: values.participationConditions || null,
   };
 }

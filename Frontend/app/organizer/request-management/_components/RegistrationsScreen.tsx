@@ -230,7 +230,8 @@ export default function RegistrationsScreen({
                       >
                         受付する：{row.user.displayName}
                       </button>
-                    ) : row.status === "checked_in" ? (
+                    ) : row.status === "checked_in" &&
+                      eventStatus === "published" ? (
                       <button
                         className={CONTROL}
                         type="button"
