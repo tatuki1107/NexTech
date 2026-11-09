@@ -5,6 +5,7 @@ import { notFound } from "../lib/errors";
 import { pagination, UUID_PATTERN } from "../lib/validation";
 import { queryPage } from "../db/pagination";
 import { WAITLIST_RANK_SQL } from "../services/registrations";
+import { REGISTRATION_START_SQL } from "../services/registration-schedule";
 
 export const meRoutes = new Elysia({ prefix: "/me" })
   .get("", async ({ headers }) => ({
@@ -43,8 +44,8 @@ export const meRoutes = new Elysia({ prefix: "/me" })
       const user = (await getCurrentUser(headers.authorization))!;
       const page = pagination(query.page, query.perPage);
       const viewClause: Record<string, string> = {
-        upcoming: "AND e.start_at >= now() AND r.status <> 'cancelled'",
-        past: "AND e.start_at < now()",
+        upcoming: "AND e.status <> 'completed' AND (schedule.start_at IS NULL OR schedule.start_at > now()) AND r.status <> 'cancelled'",
+        past: "AND (e.status='completed' OR schedule.start_at <= now())",
         waitlisted: "AND r.status='waitlisted'",
         cancelled: "AND r.status='cancelled'",
       };
@@ -53,9 +54,10 @@ export const meRoutes = new Elysia({ prefix: "/me" })
         `SELECT r.id,r.event_id AS "eventId",r.user_id AS "userId",r.status,
       ${WAITLIST_RANK_SQL} AS "waitlistPosition",r.applied_at AS "appliedAt",r.confirmed_at AS "confirmedAt",
       r.cancelled_at AS "cancelledAt",r.checked_in_at AS "checkedInAt",
+      schedule.start_at AS "effectiveStartAt",
       jsonb_build_object('id',e.id,'title',e.title,'summary',e.summary,'format',e.format,'venueName',e.venue_name,
         'startAt',e.start_at,'endAt',e.end_at,'capacity',e.capacity,
-        'category',jsonb_build_object('id',c.id,'name',c.name,'slug',c.slug),
+        'category',CASE WHEN c.id IS NULL THEN NULL ELSE jsonb_build_object('id',c.id,'name',c.name,'slug',c.slug) END,
         'organizer',jsonb_build_object('id',o.id,'name',o.name,'slug',o.slug,'description',o.description,
           'websiteUrl',o.website_url,'contactEmail',o.contact_email,'status',o.status),
         'tags',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name,'slug',t.slug) ORDER BY t.name)
@@ -64,8 +66,9 @@ export const meRoutes = new Elysia({ prefix: "/me" })
         'waitlistCount',(SELECT count(*)::int FROM registrations rw WHERE rw.event_id=e.id AND rw.status='waitlisted'),
         'registrationStatus',CASE WHEN r.status='cancelled' THEN NULL ELSE r.status END) AS event,
       count(*) OVER()::int AS total FROM registrations r JOIN events e ON e.id=r.event_id
-      JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
-      WHERE r.user_id=$1 ${clause} ORDER BY e.start_at DESC,r.id`,
+      LEFT JOIN categories c ON c.id=e.category_id JOIN organizers o ON o.id=e.organizer_id
+      CROSS JOIN LATERAL (SELECT ${REGISTRATION_START_SQL} AS start_at) AS schedule
+      WHERE r.user_id=$1 ${clause} ORDER BY schedule.start_at DESC NULLS LAST,r.id`,
         [user.id],
         page,
       );

@@ -2,12 +2,13 @@ export type EventDetailData = {
   id: string;
   title: string;
   description: string;
-  format: string;
+  format: string | null;
   venueName: string | null;
-  startAt: string;
-  endAt: string;
+  startAt: string | null;
+  effectiveStartAt?: string | null;
+  endAt: string | null;
   applicationDeadline: string | null;
-  capacity: number;
+  capacity: number | null;
   categoryName: string;
   organizerName: string;
   applicationCount: number;
@@ -20,7 +21,8 @@ export type EventDetailData = {
   isArchived?: boolean;
 };
 
-export function formatEventDate(startAt: string, endAt: string) {
+export function formatEventDate(startAt: string | null, endAt: string | null) {
+  if (!startAt || !endAt) return "日時未定";
   const start = new Date(startAt);
   const end = new Date(endAt);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()))

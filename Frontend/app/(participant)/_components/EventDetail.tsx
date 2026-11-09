@@ -20,10 +20,10 @@ export function EventDetail({
   onChanged: () => void;
 }) {
   const deadline = formatDeadline(event.applicationDeadline);
-  const applicationRate = Math.min(
+  const applicationRate = event.capacity ? Math.min(
     100,
     Math.round((event.applicationCount / event.capacity) * 100),
-  );
+  ) : 0;
   const isLowSeats = event.seatsLeft <= 3;
   const isLowDeadline =
     deadline.remainingDays !== null && deadline.remainingDays <= 3;
@@ -64,10 +64,10 @@ export function EventDetail({
                 <PersonOutlinedIcon />
                 <span>定員</span>
               </dt>
-              <dd>{event.capacity}名</dd>
+              <dd>{event.capacity === null ? "未定" : `${event.capacity}名`}</dd>
             </div>
           </dl>
-          <section
+          {event.capacity !== null && <section
             className="application-status"
             aria-labelledby="application-status-title"
           >
@@ -92,7 +92,7 @@ export function EventDetail({
                 {deadline.remaining}
               </span>
             </p>
-          </section>
+          </section>}
           <section className="description-block">
             <h2>イベント内容</h2>
             <p>{event.description}</p>

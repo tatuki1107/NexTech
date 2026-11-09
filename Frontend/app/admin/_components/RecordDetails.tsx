@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getListHref } from "../_lib/filters";
 import {
   actionLabel,
@@ -15,6 +15,7 @@ import { useAdminData } from "../_lib/use-admin-data";
 import AdminDataState from "./AdminDataState";
 import AdminPageHeader from "./AdminPageHeader";
 import RecordStatus from "./RecordStatus";
+import RecordOperations from "./RecordOperations";
 import styles from "../admin.module.css";
 
 function RecordFields({ fields }: { fields: AdminRecord["fields"] }) {
@@ -99,6 +100,7 @@ function RecordContent({
     [section, id],
   );
   const { result, reload } = useAdminData(load);
+  const [notice, setNotice] = useState("");
   if (result.status === "loading") return <AdminDataState />;
   if (result.status === "error") {
     const message =
@@ -113,6 +115,7 @@ function RecordContent({
   const record = result.data;
   return (
     <>
+      {notice && <p role="status">{notice}</p>}
       <section
         className={
           preview ? styles.previewIntro : `${styles.card} ${styles.recordIntro}`
@@ -132,6 +135,10 @@ function RecordContent({
         </div>
         <RecordFields fields={record.fields} />
       </section>
+      {!preview && <RecordOperations section={section} record={record} onChanged={(message) => {
+        setNotice(message);
+        reload();
+      }} />}
       <RecentHistory section={section} id={id} preview={preview} />
     </>
   );

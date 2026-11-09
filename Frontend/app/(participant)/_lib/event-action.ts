@@ -12,13 +12,14 @@ export function getEventActionPolicy(
   const registered = Boolean(
     event.registrationStatus && event.registrationStatus !== "cancelled",
   );
-  const started = new Date(event.startAt).getTime() <= now;
+  const startAt = event.effectiveStartAt === undefined ? event.startAt : event.effectiveStartAt;
+  const started = startAt !== null && new Date(startAt).getTime() <= now;
   const cancellableStatus = ["pending", "confirmed", "waitlisted"].includes(
     event.registrationStatus ?? "",
   );
   // A missing public detail also means paused/moderated, not just finished.
   // The authenticated registration still permits cancellation before the start.
-  if (event.isArchived && (!registered || started || !cancellableStatus))
+  if (event.isArchived && (!registered || started || startAt === null || !cancellableStatus))
     return { kind: "history" };
   if (registered)
     return {

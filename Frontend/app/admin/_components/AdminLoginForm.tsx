@@ -33,7 +33,8 @@ export default function AdminLoginForm({ returnTo }: { returnTo: string }) {
     }
   }
   return (
-    <form className={styles.loginForm} onSubmit={handleSubmit}>
+    <form method="post" className={styles.loginForm} onSubmit={handleSubmit}>
+      <noscript>ログインにはJavaScriptが必要です。</noscript>
       <h1>管理者ログイン</h1>
       <p>運営管理者のアカウントでログインしてください。</p>
       <label>

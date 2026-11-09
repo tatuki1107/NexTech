@@ -55,7 +55,8 @@ function CreateOrganization({ onCreated }: { onCreated: () => void }) {
     }
   }
   return (
-    <form onSubmit={submit} className="max-w-xl space-y-4">
+    <form method="post" onSubmit={submit} className="max-w-xl space-y-4">
+      <noscript>ログインにはJavaScriptが必要です。</noscript>
       <h1 className="text-2xl font-bold">主催者プロフィールを作成</h1>
       <p>所属する主催者がありません。新しい主催者として登録できます。</p>
       <label className="block">

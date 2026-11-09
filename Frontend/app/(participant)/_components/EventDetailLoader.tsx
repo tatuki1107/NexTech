@@ -25,18 +25,19 @@ function RegistrationDetail({ id }: { id: string }) {
       onChanged={reload}
       event={{
         ...registration.event,
+        effectiveStartAt: registration.effectiveStartAt,
         registrationStatus:
           registration.status === "cancelled" ? null : registration.status,
         isArchived: true,
         description:
           "このイベントは現在公開されていません。以下はご自身の申込履歴です。",
-        categoryName: registration.event.category.name,
+        categoryName: registration.event.category?.name ?? "カテゴリ未設定",
         organizerName: registration.event.organizer.name,
         applicationDeadline: null,
         applicationCount: registration.event.confirmedCount,
         seatsLeft: Math.max(
           0,
-          registration.event.capacity - registration.event.confirmedCount,
+          (registration.event.capacity ?? 0) - registration.event.confirmedCount,
         ),
       }}
     />

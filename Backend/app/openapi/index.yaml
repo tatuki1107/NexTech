@@ -2336,7 +2336,7 @@ components:
         - completed
     EventListItem:
       type: object
-      description: 主催者・管理者が取得する未完成の下書きではformat・startAt・endAt・capacity・categoryがnullになる。公開イベントでは入力済み。
+      description: 下書きや公開停止中のイベントでは、主催者・管理者の参照や本人の申込一覧でformat・startAt・endAt・capacity・categoryがnullになる場合がある。公開イベントでは入力済み。
       required:
         - id
         - title
@@ -2595,6 +2595,11 @@ components:
         - status
         - appliedAt
       properties:
+        effectiveStartAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 本人の申込一覧に含まれる開催開始判定用の日時。現在の開始日時が未設定なら変更履歴に残る直近の開始日時。
         id:
           type: string
           format: uuid
