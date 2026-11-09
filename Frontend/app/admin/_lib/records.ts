@@ -7,7 +7,11 @@ const EVENT_STATUSES = {
   cancelled: "中止",
   completed: "終了",
 };
-const ORGANIZER_STATUSES = { active: "有効", inactive: "非アクティブ" };
+const ORGANIZER_STATUSES = {
+  active: "有効",
+  inactive: "非アクティブ",
+  suspended: "停止中",
+};
 const REGISTRATION_STATUSES = {
   pending: "確認待ち",
   confirmed: "参加確定",

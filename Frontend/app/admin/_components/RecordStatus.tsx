@@ -14,7 +14,7 @@ export default function RecordStatus({
     ? "positive"
     : ["pending", "waitlisted"].includes(status)
       ? "pending"
-      : ["cancelled", "no_show"].includes(status)
+      : ["cancelled", "no_show", "suspended"].includes(status)
         ? "negative"
         : status === "checked_in"
           ? "info"
