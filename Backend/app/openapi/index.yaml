@@ -2336,7 +2336,7 @@ components:
         - completed
     EventListItem:
       type: object
-      description: 主催者・管理者が取得する未完成の下書きではformat・startAt・endAt・capacity・categoryがnullになる。公開イベントでは入力済み。
+      description: 下書きや公開停止中のイベントでは、主催者・管理者の参照や本人の申込一覧でformat・startAt・endAt・capacity・categoryがnullになる場合がある。公開イベントでは入力済み。
       required:
         - id
         - title

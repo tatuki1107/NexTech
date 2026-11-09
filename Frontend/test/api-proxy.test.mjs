@@ -13,9 +13,9 @@ test("participant proxy does not expose organizer/admin mutations or arbitrary u
   assert.equal(isParticipantEndpoint("auth/refresh", "GET"), false);
 });
 
-test("admin proxy allows only console reads and passes authorization through to the backend", async () => {
+test("admin proxy passes console reads and authorization through to the backend", async () => {
   const id = "11111111-1111-4111-8111-111111111111";
-  for (const path of ["admin/events", `admin/organizers/${id}`, `admin/registrations/${id}`, "admin/moderation-actions"]) {
+  for (const path of ["admin/events", `admin/organizers/${id}`, `admin/registrations/${id}`, "admin/moderation-actions", "admin/analytics/monthly-participants", "admin/analytics/breakdown"]) {
     const response = await proxyParticipantApi(
       request(path + "?page=2", "GET", { cookie: "nextechAccessToken=console-token" }),
       path.split("/"),
@@ -30,11 +30,31 @@ test("admin proxy allows only console reads and passes authorization through to 
     assert.equal(response.headers.get("cache-control"), "private, no-store");
   }
   for (const [path, method] of [
-    [`admin/events/${id}/status`, "PATCH"], ["admin/reviews", "POST"], ["admin/events/not-an-id", "GET"],
+    [`admin/events/${id}`, "DELETE"], ["admin/analytics/unknown", "GET"], ["admin/events/not-an-id", "GET"],
   ]) {
     assert.equal((await proxyParticipantApi(
       request(path, method), path.split("/"), () => { throw Error("must not fetch"); },
     )).status, 404);
+  }
+});
+test("admin writes require the same origin and only allow explicit console operations", async () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  for (const [path, method, payload] of [
+    [`admin/events/${id}/status`, "PATCH", { status: "draft", reason: "Test review" }],
+    [`admin/organizers/${id}/status`, "PATCH", { status: "suspended", reason: "Test review" }],
+    ["admin/reviews", "POST", { targetType: "event", targetId: id }],
+  ]) {
+    const headers = { origin, "content-type": "application/json", cookie: "nextechAccessToken=console-token" };
+    const body = JSON.stringify(payload);
+    const response = await proxyParticipantApi(new Request(origin + "/api/v1/" + path, { method, headers, body }), path.split("/"), async (url, init) => {
+      assert.equal(new URL(url).pathname, "/api/v1/" + path);
+      assert.equal(init.method, method);
+      assert.equal(init.body, body);
+      assert.equal(new Headers(init.headers).get("authorization"), "Bearer console-token");
+      return Response.json({ data: {} }, { status: method === "POST" ? 201 : 200 });
+    });
+    assert.equal(response.status, method === "POST" ? 201 : 200);
+    assert.equal((await proxyParticipantApi(request(path, method, { origin: "https://evil.example" }), path.split("/"), () => { throw Error("must not fetch"); })).status, 403);
   }
 });
 test("cookie-authenticated writes require the same origin including login/logout", async () => {

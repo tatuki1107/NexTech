@@ -7,6 +7,7 @@ import EventOutlined from "@mui/icons-material/EventOutlined";
 import BusinessOutlined from "@mui/icons-material/BusinessOutlined";
 import GroupOutlined from "@mui/icons-material/GroupOutlined";
 import HistoryOutlined from "@mui/icons-material/HistoryOutlined";
+import BarChartOutlined from "@mui/icons-material/BarChartOutlined";
 import {
   apiRequest,
   broadcastSessionChange,
@@ -23,6 +24,7 @@ const NAVIGATION = [
   { href: "/admin/organizers", label: "主催者", Icon: BusinessOutlined },
   { href: "/admin/registrations", label: "参加情報", Icon: GroupOutlined },
   { href: "/admin/history", label: "操作履歴", Icon: HistoryOutlined },
+  { href: "/admin/analytics", label: "基本集計", Icon: BarChartOutlined },
 ];
 
 export default function AdminShell({

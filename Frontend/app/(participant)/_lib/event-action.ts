@@ -12,7 +12,7 @@ export function getEventActionPolicy(
   const registered = Boolean(
     event.registrationStatus && event.registrationStatus !== "cancelled",
   );
-  const started = new Date(event.startAt).getTime() <= now;
+  const started = event.startAt !== null && new Date(event.startAt).getTime() <= now;
   const cancellableStatus = ["pending", "confirmed", "waitlisted"].includes(
     event.registrationStatus ?? "",
   );

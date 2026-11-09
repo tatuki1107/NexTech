@@ -19,14 +19,14 @@ export function EventCard({
   date: string;
   location: string;
   category: string;
-  seatsLeft: number;
+  seatsLeft?: number;
   organizer: string;
 }) {
   return (
     <article className="event-card">
       <div className="event-card-topline">
         <span className="category-chip">{category}</span>
-        <span className="seats-left">残り {seatsLeft} 席</span>
+        {seatsLeft !== undefined && <span className="seats-left">残り {seatsLeft} 席</span>}
       </div>
       <EventImagePlaceholder />
       <div className="event-card-body">

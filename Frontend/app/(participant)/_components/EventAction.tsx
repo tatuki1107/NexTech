@@ -105,9 +105,9 @@ export function EventAction({
                       ? "キャンセル待ちに申し込む"
                       : "参加を申し込む"}
           </button>
-          {message && <p role="status">{message}</p>}
         </>
       )}
+      {message && <p role="status">{message}</p>}
     </div>
   );
 }

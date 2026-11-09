@@ -1,7 +1,7 @@
 import { EventCard } from "./EventCard";
-import type { ParticipantEvent } from "../_lib/types";
+import type { RegistrationEvent } from "../_lib/types";
 import { formatEventDate } from "../_lib/event-detail";
-export function ParticipantEventCard({ event }: { event: ParticipantEvent }) {
+export function ParticipantEventCard({ event }: { event: RegistrationEvent }) {
   return (
     <EventCard
       eventId={event.id}
@@ -12,9 +12,9 @@ export function ParticipantEventCard({ event }: { event: ParticipantEvent }) {
           ? "オンライン"
           : (event.venueName ?? "会場未定")
       }
-      category={event.category.name}
+      category={event.category?.name ?? "カテゴリ未設定"}
       organizer={event.organizer.name}
-      seatsLeft={Math.max(0, event.capacity - event.confirmedCount)}
+      seatsLeft={event.capacity === null ? undefined : Math.max(0, event.capacity - event.confirmedCount)}
     />
   );
 }

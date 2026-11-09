@@ -14,6 +14,9 @@ test("unpublished details never offer a new or repeat application", () => {
     assert.equal(getEventActionPolicy({ ...event, registrationStatus }, now).kind, "history");
   }
 });
+test("removing an unpublished event's schedule does not block cancellation", () => {
+  assert.equal(getEventActionPolicy({ ...event, startAt: null, registrationStatus: "confirmed" }, now).kind, "cancel");
+});
 test("past unpublished registrations remain read-only", () => {
   assert.equal(getEventActionPolicy({ ...event, startAt: "2020-01-01T00:00:00Z", registrationStatus: "confirmed" }, now).kind, "history");
 });

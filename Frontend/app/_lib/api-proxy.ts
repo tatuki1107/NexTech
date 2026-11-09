@@ -26,8 +26,12 @@ export function isOrganizerEndpoint(path: string, method: string): boolean {
 }
 
 export function isAdminEndpoint(path: string, method: string): boolean {
+  if (method === "POST") return path === "admin/reviews";
+  if (method === "PATCH")
+    return new RegExp(`^admin/(events|organizers)/${uuid}/status$`).test(path);
   return method === "GET" && (
     /^admin\/moderation-actions$/.test(path) ||
+    /^admin\/analytics\/(monthly-participants|breakdown)$/.test(path) ||
     new RegExp(`^admin/(events|organizers|registrations)(/${uuid})?$`).test(path)
   );
 }

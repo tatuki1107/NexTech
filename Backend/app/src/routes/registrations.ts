@@ -137,7 +137,7 @@ export const registrationRoutes = new Elysia({ prefix: "/events/:eventId" })
         if (!event) throw notFound("イベントが見つかりません");
         if (
           event.status === "completed" ||
-          new Date(event.start_at as string) <= new Date()
+          (event.start_at !== null && new Date(event.start_at as string) <= new Date())
         ) {
           throw new ApiError(
             422,

@@ -39,7 +39,8 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
   return (
     <section className="settings-page">
       <h1>{title}</h1>
-      <form className="participant-form" onSubmit={submit}>
+      <form method="post" className="participant-form" onSubmit={submit}>
+        <noscript>ログイン・新規登録にはJavaScriptが必要です。</noscript>
         {signup && (
           <label>
             表示名

@@ -34,7 +34,14 @@ export type Registration = {
   status: string;
   eventId: string;
   waitlistPosition: number | null;
-  event: ParticipantEvent;
+  event: RegistrationEvent;
+};
+export type RegistrationEvent = Omit<ParticipantEvent, "category" | "startAt" | "endAt" | "format" | "capacity"> & {
+  category: NamedItem | null;
+  startAt: string | null;
+  endAt: string | null;
+  format: string | null;
+  capacity: number | null;
 };
 export type Notification = {
   id: string;

@@ -69,6 +69,33 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       await registerPair(eventId);
     });
 
+    test("a participant keeps and can cancel a registration after the event is hidden and its category is removed", async () => {
+      const id = await createEvent();
+      await registerPair(id);
+      const stopped = await call(`/api/v1/admin/events/${id}/status`, "PATCH", ownerToken, {
+        status: "draft", reason: "Review fixture",
+      });
+      expect(stopped.status).toBe(200);
+      const edited = await call(`/api/v1/events/${id}`, "PATCH", ownerToken, {
+        expectedVersion: stopped.body.data.version, categoryId: null, startAt: null, endAt: null,
+      });
+      expect(edited.status).toBe(200);
+      expect((await call(`/api/v1/events/${id}`, "GET", firstToken)).status).toBe(404);
+      const upcoming = await call("/api/v1/me/registrations?view=upcoming", "GET", firstToken);
+      expect(upcoming.status).toBe(200);
+      expect(upcoming.body.data).toContainEqual(expect.objectContaining({
+        eventId: id,
+        status: "confirmed",
+        event: expect.objectContaining({ category: null, startAt: null }),
+      }));
+      const cancelled = await call(`/api/v1/events/${id}/registration`, "DELETE", firstToken);
+      expect(cancelled.status).toBe(200);
+      const history = await call("/api/v1/me/registrations?view=cancelled", "GET", firstToken);
+      expect(history.body.data).toContainEqual(expect.objectContaining({ eventId: id, status: "cancelled" }));
+      const [waiting] = await sqlClient`SELECT status FROM registrations WHERE event_id=${id} AND user_id=${second}`;
+      expect(waiting.status).toBe("waitlisted");
+    });
+
     test("valid single and multiple UUID tag filters work", async () => {
       const tags: string[] = [];
       for (let index = 0; index < 2; index++) {
