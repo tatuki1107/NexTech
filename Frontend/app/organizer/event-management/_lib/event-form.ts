@@ -1,55 +1,135 @@
+import type { ManagedEvent } from "../../_lib/api";
 export type EventFormValues = {
   title: string;
+  summary: string;
   date: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   venue: string;
+  address: string;
   venueUrl: string;
   capacity: string;
   tags: string[];
   description: string;
+  categoryId: string;
+  format: string;
+  applicationStart: string;
+  applicationDeadline: string;
+  participationConditions: string;
+  waitlistEnabled: boolean;
 };
-
-export const DESCRIPTION_MAX_LENGTH = 500;
-
-export const DEFAULT_EVENT_DURATION_HOURS = 2;
-
-/** 選択できるタグ。将来は参加者画面のカテゴリやAPIと揃える */
-export const AVAILABLE_TAGS = [
-  "フロントエンド",
-  "バックエンド",
-  "生成AI",
-  "インフラ / クラウド",
-  "セキュリティ",
-  "UI / UXデザイン",
-] as const;
-
 export const EMPTY_EVENT_FORM: EventFormValues = {
   title: "",
+  summary: "",
   date: "",
+  endDate: "",
   startTime: "",
   endTime: "",
   venue: "",
+  address: "",
   venueUrl: "",
   capacity: "",
   tags: [],
   description: "",
+  categoryId: "",
+  format: "",
+  applicationStart: "",
+  applicationDeadline: "",
+  participationConditions: "",
+  waitlistEnabled: false,
 };
-
-/** "13:00" に時間を足した "15:00" を返す。日をまたぐ時刻は想定しないため、24時以降は空文字を返す */
-export function addHoursToTime(time: string, hours: number): string {
-  const [hour, minute] = time.split(":").map(Number);
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return "";
-  const endHour = hour + hours;
-  if (endHour > 23) return "";
-  return `${String(endHour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+export function localDateTime(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(new Date(value).getTime() + 9 * 3600000);
+  return date.toISOString().slice(0, 16);
 }
-
-/** input[type="date"] に渡すため、yyyy-mm-dd 形式で今日の日付を返す */
-export function getTodayString(): string {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+export function eventFormValues(event: ManagedEvent): EventFormValues {
+  const start = localDateTime(event.startAt),
+    end = localDateTime(event.endAt);
+  return {
+    title: event.title,
+    summary: event.summary ?? "",
+    date: start.slice(0, 10),
+    startTime: start.slice(11),
+    endDate: end.slice(0, 10),
+    endTime: end.slice(11),
+    venue: event.venueName ?? "",
+    address: event.address ?? "",
+    venueUrl: event.onlineUrl ?? "",
+    capacity: event.capacity?.toString() ?? "",
+    tags: event.tags.map((tag) => tag.id),
+    description: event.description,
+    categoryId: event.category?.id ?? "",
+    format: event.format ?? "",
+    applicationStart: localDateTime(event.applicationStartAt),
+    applicationDeadline: localDateTime(event.applicationDeadline),
+    participationConditions: event.participationConditions ?? "",
+    waitlistEnabled: event.waitlistEnabled,
+  };
+}
+export function eventPayload(values: EventFormValues, current?: ManagedEvent) {
+  const timestamp = (value: string) =>
+    new Date(value + ":00+09:00").toISOString();
+  // The form displays minutes. Omit untouched timestamps from PATCH to keep
+  // the exact database values, including seconds and fractional seconds.
+  const previous = current && eventFormValues(current);
+  const startUnchanged =
+    previous?.date === values.date && previous.startTime === values.startTime;
+  const endUnchanged =
+    previous?.endDate === values.endDate && previous.endTime === values.endTime;
+  const start =
+    startUnchanged
+      ? undefined
+      : values.date && values.startTime
+        ? timestamp(values.date + "T" + values.startTime)
+        : null;
+  const end =
+    endUnchanged
+      ? undefined
+      : values.endDate && values.endTime
+        ? timestamp(values.endDate + "T" + values.endTime)
+        : null;
+  const effectiveStart = startUnchanged ? current?.startAt : start;
+  const effectiveEnd = endUnchanged ? current?.endAt : end;
+  if (
+    effectiveStart &&
+    effectiveEnd &&
+    Date.parse(effectiveStart) >= Date.parse(effectiveEnd)
+  )
+    throw new Error("終了日時は開始日時より後にしてください");
+  if (
+    values.capacity &&
+    (!Number.isSafeInteger(Number(values.capacity)) ||
+      Number(values.capacity) < 1)
+  )
+    throw new Error("定員は1以上の整数にしてください");
+  return {
+    title: values.title.trim(),
+    summary: values.summary,
+    description: values.description,
+    categoryId: values.categoryId || null,
+    format: values.format || null,
+    venueName: values.venue,
+    address: values.address,
+    onlineUrl: values.venueUrl || null,
+    startAt: start,
+    endAt: end,
+    capacity: values.capacity ? Number(values.capacity) : null,
+    tagIds: values.tags,
+    waitlistEnabled: values.waitlistEnabled,
+    applicationStartAt:
+      previous?.applicationStart === values.applicationStart
+        ? undefined
+        : values.applicationStart
+          ? timestamp(values.applicationStart)
+          : null,
+    applicationDeadline:
+      previous?.applicationDeadline === values.applicationDeadline
+        ? undefined
+        : values.applicationDeadline
+          ? timestamp(values.applicationDeadline)
+          : null,
+    participationConditions: values.participationConditions || null,
+  };
 }

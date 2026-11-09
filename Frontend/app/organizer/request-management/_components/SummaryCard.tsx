@@ -1,6 +1,6 @@
 type SummaryCardProps = {
   label: string;
-  value: string;
+  value: string | number;
   note?: string;
 };
 

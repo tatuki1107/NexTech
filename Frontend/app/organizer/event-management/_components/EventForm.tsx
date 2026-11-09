@@ -1,304 +1,299 @@
 "use client";
-
 import { useRouter } from "next/navigation";
-import { useState, type SyntheticEvent } from "react";
-
+import { useRef, useState, type FormEvent } from "react";
+import { useOrganizer } from "../../_components/OrganizerProvider";
+import { ApiState, BUTTON, CONTROL } from "../../_components/ApiState";
+import { useResource } from "../../_lib/use-resource";
 import {
-  DEFAULT_EVENT_DURATION_HOURS,
-  DESCRIPTION_MAX_LENGTH,
-  addHoursToTime,
-  getTodayString,
-  type EventFormValues,
-} from "../_lib/event-form";
+  apiRequest,
+  changeStatus,
+  organizerPath,
+  errorMessage,
+  type ManagedEvent,
+  type Taxonomy,
+} from "../../_lib/api";
+import { eventPayload, type EventFormValues } from "../_lib/event-form";
 import ConfirmDialog from "./ConfirmDialog";
-import FormField from "./FormField";
-import TagInput from "./TagInput";
-
-type EventFormProps = {
-  mode: "new" | "edit";
-  initialValues: EventFormValues;
-  lastUpdated?: string;
-};
-
-const LIST_PATH = "/organizer/event-management";
-// 幅と枠線の色は、同じ種類のクラスが重複しないよう各入力で指定する
-const INPUT_BASE =
-  "h-14 rounded-xl border bg-white px-4 text-base text-fg-neutral-primary placeholder:text-fg-neutral-secondary focus:outline-2 focus:outline-fg-brand-primary";
-const INPUT_BORDER = "border-ol-neutral-primary";
-const FORM_BUTTON =
-  "flex h-12 w-50 items-center justify-center rounded-xl border-2 text-base";
-
 export default function EventForm({
   mode,
   initialValues,
-  lastUpdated,
-}: EventFormProps) {
+  initialEvent,
+}: {
+  mode: "new" | "edit";
+  initialValues: EventFormValues;
+  initialEvent?: ManagedEvent;
+}) {
   const router = useRouter();
-  const [values, setValues] = useState<EventFormValues>(initialValues);
-  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
-
-  const isDirty = JSON.stringify(values) !== JSON.stringify(initialValues);
-
-  const handleChange = <K extends keyof EventFormValues>(
+  const { organization } = useOrganizer();
+  const [values, setValues] = useState(initialValues);
+  const saved = useRef(initialEvent);
+  const [busy, setBusy] = useState(false);
+  const lock = useRef(false);
+  const [error, setError] = useState("");
+  const [leave, setLeave] = useState(false);
+  const [tagSearch, setTagSearch] = useState("");
+  const [knownTags, setKnownTags] = useState<Taxonomy[]>(
+    initialEvent?.tags ?? [],
+  );
+  const canPublish = !initialEvent || initialEvent.status === "draft";
+  const categories = useResource<Taxonomy[]>("/categories");
+  const tags = useResource<Taxonomy[]>(
+    "/tags?keyword=" + encodeURIComponent(tagSearch),
+  );
+  const set = <K extends keyof EventFormValues>(
     key: K,
     value: EventFormValues[K],
-  ) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleStartTimeChange = (startTime: string) => {
-    setValues((prev) => ({
-      ...prev,
-      startTime,
-      // 入力済みの終了時刻は上書きしない
-      endTime:
-        prev.endTime === ""
-          ? addHoursToTime(startTime, DEFAULT_EVENT_DURATION_HOURS)
-          : prev.endTime,
-    }));
-  };
-
-  const hasInvalidTimeRange =
-    values.startTime !== "" &&
-    values.endTime !== "" &&
-    values.endTime <= values.startTime;
-
-  // 空白だけの入力は未入力として扱う
-  const hasEmptyRequiredField =
-    values.title.trim() === "" ||
-    values.date === "" ||
-    values.startTime === "" ||
-    values.endTime === "" ||
-    values.venue.trim() === "" ||
-    values.capacity === "" ||
-    values.description.trim() === "";
-
-  const canPublish = !hasEmptyRequiredField && !hasInvalidTimeRange;
-  // 下書きは作成途中でも保存できるよう、タイトルだけを必須にする
-  const canSaveDraft = values.title.trim() !== "";
-
-  const navigateBack = () => {
-    // 詳細・一覧のどちらから来ても直前の画面に戻す。
-    // 履歴がない場合(直接URLを開いたとき)は一覧へ移動する
-    if (window.history.length > 1) {
-      router.back();
-      return;
+  ) => setValues((prev) => ({ ...prev, [key]: value }));
+  async function save(publish: boolean) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const current = saved.current;
+      const body = eventPayload(values, current);
+      const response = await apiRequest<{ data: ManagedEvent }>(
+        current
+          ? `/events/${current.id}`
+          : organizerPath(organization.id) + "/events",
+        {
+          method: current ? "PATCH" : "POST",
+          body: JSON.stringify({
+            ...body,
+            ...(current ? { expectedVersion: current.version } : {}),
+          }),
+        },
+      );
+      saved.current = response.data;
+      if (publish && response.data.status === "draft") {
+        const published = await changeStatus(response.data.id, "published");
+        saved.current = published.data;
+      }
+      router.push(`/organizer/event-management/${response.data.id}`);
+    } catch (e) {
+      setError(
+        errorMessage(e) +
+          (saved.current && !initialEvent
+            ? "（作成済みの下書きを再利用して保存できます）"
+            : ""),
+      );
+    } finally {
+      lock.current = false;
+      setBusy(false);
     }
-    router.push(LIST_PATH);
-  };
-
-  const handleBack = () => {
-    if (isDirty) {
-      setIsLeaveDialogOpen(true);
-      return;
-    }
-    navigateBack();
-  };
-
-  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
+  }
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // 保存処理はAPI接続のPRで実装
-  };
-
+    void save(canPublish);
+  }
+  if (!categories.data)
+    return (
+      <ApiState
+        error={categories.error || tags.error}
+        retry={() => {
+          categories.reload();
+          tags.reload();
+        }}
+      />
+    );
+  const categoryOptions = [
+    ...new Map(
+      [
+        ...(initialEvent?.category ? [initialEvent.category] : []),
+        ...categories.data,
+      ].map((item) => [item.id, item]),
+    ).values(),
+  ];
+  const tagOptions = [
+    ...new Map(
+      [...knownTags, ...(tags.data ?? [])].map((item) => [item.id, item]),
+    ).values(),
+  ];
+  const fields: Array<[keyof EventFormValues, string, string]> = [
+    ["title", "イベントタイトル", "text"],
+    ["summary", "概要", "text"],
+    ["date", "開催日", "date"],
+    ["startTime", "開始時刻", "time"],
+    ["endDate", "終了日", "date"],
+    ["endTime", "終了時刻", "time"],
+    ["venue", "開催場所", "text"],
+    ["address", "住所", "text"],
+    ["venueUrl", "配信URL", "url"],
+    ["capacity", "定員", "number"],
+    ["applicationStart", "申込受付開始（日本時間）", "datetime-local"],
+    ["applicationDeadline", "申込期限（日本時間）", "datetime-local"],
+  ];
   return (
-    <form onSubmit={handleSubmit} className="max-w-250 space-y-8">
-      <div className="space-y-6">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="flex items-center gap-2 text-base font-bold text-fg-neutral-primary"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-          >
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-          {mode === "new" ? "イベント一覧に戻る" : "戻る"}
-        </button>
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-fg-neutral-primary">
-            {mode === "new" ? "新規作成" : "編集"}
-          </h1>
-          <p className="text-sm text-fg-neutral-primary">編集中</p>
-        </div>
-      </div>
-
-      <FormField label="イベントタイトル" htmlFor="event-title" isRequired>
-        <input
-          id="event-title"
-          type="text"
-          required
-          value={values.title}
-          onChange={(event) => handleChange("title", event.target.value)}
-          placeholder="イベントタイトルを入力"
-          className={`${INPUT_BASE} ${INPUT_BORDER} w-full`}
-        />
-      </FormField>
-
-      <FormField label="開催日時" htmlFor="event-date" isRequired>
-        <div className="space-y-2">
-          <div className="flex items-center gap-4">
+    <form onSubmit={submit} className="max-w-250 space-y-6">
+      <button
+        type="button"
+        className="underline"
+        onClick={() =>
+          JSON.stringify(values) !== JSON.stringify(initialValues)
+            ? setLeave(true)
+            : router.push("/organizer/event-management")
+        }
+      >
+        イベント一覧に戻る
+      </button>
+      <h1 className="text-3xl font-bold">
+        {mode === "new" ? "新規作成" : "編集"}
+      </h1>
+      <p>
+        日時は日本時間で入力してください。下書きはタイトルのみで保存できます。
+      </p>
+      <fieldset disabled={busy} className="grid gap-5 md:grid-cols-2">
+        {fields.map(([key, label, type]) => (
+          <label key={key} className="block">
+            {label}
             <input
-              id="event-date"
-              type="date"
-              required
-              aria-label="開催日"
-              // 編集では既存の日付を保てるよう、過去日の制限は新規作成のみ
-              min={mode === "new" ? getTodayString() : undefined}
-              value={values.date}
-              onChange={(event) => handleChange("date", event.target.value)}
-              className={`${INPUT_BASE} ${INPUT_BORDER} w-75`}
-            />
-            <input
-              type="time"
-              required
-              aria-label="開始時刻"
-              value={values.startTime}
-              onChange={(event) => handleStartTimeChange(event.target.value)}
-              className={`${INPUT_BASE} ${INPUT_BORDER} w-33`}
-            />
-            <span aria-hidden="true" className="text-base">
-              〜
-            </span>
-            <input
-              type="time"
-              required
-              aria-label="終了時刻"
-              aria-invalid={hasInvalidTimeRange}
-              aria-describedby={
-                hasInvalidTimeRange ? "event-time-error" : undefined
+              className={CONTROL + " mt-2 block w-full"}
+              type={type}
+              value={String(values[key])}
+              required={key === "title"}
+              maxLength={
+                key === "title" ? 160 : key === "summary" ? 300 : undefined
               }
-              value={values.endTime}
-              onChange={(event) => handleChange("endTime", event.target.value)}
-              className={`${INPUT_BASE} w-33 ${
-                hasInvalidTimeRange ? "border-fg-warning-primary" : INPUT_BORDER
-              }`}
+              min={type === "number" ? 1 : undefined}
+              step={type === "number" ? 1 : undefined}
+              onChange={(e) => {
+                set(key, e.target.value);
+                if (key === "date" && !values.endDate)
+                  set("endDate", e.target.value);
+              }}
             />
+          </label>
+        ))}
+        <label>
+          カテゴリ
+          <select
+            aria-label="カテゴリ"
+            value={values.categoryId}
+            onChange={(e) => set("categoryId", e.target.value)}
+            className={CONTROL + " mt-2 block w-full"}
+          >
+            <option value="">未設定</option>
+            {categoryOptions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          開催形式
+          <select
+            value={values.format}
+            onChange={(e) => set("format", e.target.value)}
+            className={CONTROL + " mt-2 block w-full"}
+          >
+            <option value="">未設定</option>
+            <option value="offline">会場開催</option>
+            <option value="online">オンライン</option>
+            <option value="hybrid">ハイブリッド</option>
+          </select>
+        </label>
+        <fieldset className="md:col-span-2">
+          <legend>タグ（最大30件）</legend>
+          <input
+            type="search"
+            aria-label="タグを検索"
+            placeholder="タグを検索"
+            maxLength={80}
+            value={tagSearch}
+            onChange={(event) => setTagSearch(event.target.value)}
+            className={CONTROL + " mb-4 w-full"}
+          />
+          {!tags.data && <ApiState error={tags.error} retry={tags.reload} />}
+          <div className="flex flex-wrap gap-4">
+            {tagOptions.map((tag) => (
+              <label key={tag.id}>
+                <input
+                  type="checkbox"
+                  checked={values.tags.includes(tag.id)}
+                  disabled={
+                    !values.tags.includes(tag.id) && values.tags.length >= 30
+                  }
+                  onChange={(e) => {
+                    if (e.target.checked)
+                      setKnownTags((previous) => [
+                        ...previous.filter((item) => item.id !== tag.id),
+                        tag,
+                      ]);
+                    set(
+                      "tags",
+                      e.target.checked
+                        ? [...values.tags, tag.id]
+                        : values.tags.filter((id) => id !== tag.id),
+                    );
+                  }}
+                />
+                {tag.name}
+              </label>
+            ))}
           </div>
-          {hasInvalidTimeRange && (
-            <p
-              id="event-time-error"
-              role="alert"
-              className="text-xs text-fg-warning-primary"
-            >
-              終了時刻は開始時刻より後にしてください
-            </p>
-          )}
-        </div>
-      </FormField>
-
-      <FormField label="開催場所" htmlFor="event-venue" isRequired>
-        <div className="space-y-3">
-          <input
-            id="event-venue"
-            type="text"
-            required
-            value={values.venue}
-            onChange={(event) => handleChange("venue", event.target.value)}
-            placeholder="開催場所を入力"
-            className={`${INPUT_BASE} ${INPUT_BORDER} w-full`}
-          />
-          <input
-            type="url"
-            aria-label="MAP / 配信URL(任意)"
-            value={values.venueUrl}
-            onChange={(event) => handleChange("venueUrl", event.target.value)}
-            placeholder="MAP / 配信URL (任意)"
-            className={`${INPUT_BASE} ${INPUT_BORDER} w-full`}
-          />
-        </div>
-      </FormField>
-
-      <FormField label="定員" htmlFor="event-capacity" isRequired>
-        <div className="flex items-end gap-4">
-          <input
-            id="event-capacity"
-            type="number"
-            required
-            min={1}
-            value={values.capacity}
-            onChange={(event) => handleChange("capacity", event.target.value)}
-            placeholder="定員人数を入力"
-            className={`${INPUT_BASE} ${INPUT_BORDER} w-75`}
-          />
-          <span className="text-sm text-fg-neutral-primary">名</span>
-        </div>
-      </FormField>
-
-      <FormField label="タグ / カテゴリ">
-        <TagInput
-          tags={values.tags}
-          onChange={(tags) => handleChange("tags", tags)}
-        />
-      </FormField>
-
-      <FormField label="イベント内容" htmlFor="event-description" isRequired>
-        <div className="relative">
+        </fieldset>
+        <label className="md:col-span-2">
+          イベント内容
           <textarea
-            id="event-description"
-            required
-            maxLength={DESCRIPTION_MAX_LENGTH}
             value={values.description}
-            onChange={(event) =>
-              handleChange("description", event.target.value)
-            }
-            placeholder="イベント内容を入力"
-            className="h-40 w-full resize-none rounded-xl border border-ol-neutral-primary bg-white p-4 pb-8 text-base text-fg-neutral-primary placeholder:text-fg-neutral-secondary focus:outline-2 focus:outline-fg-brand-primary"
+            onChange={(e) => set("description", e.target.value)}
+            className={CONTROL + " mt-2 block min-h-40 w-full"}
           />
-          <span className="pointer-events-none absolute bottom-3 right-4 text-xs text-fg-neutral-secondary">
-            {values.description.length}/{DESCRIPTION_MAX_LENGTH}
-          </span>
+        </label>
+        <label className="md:col-span-2">
+          参加条件
+          <textarea
+            maxLength={10000}
+            value={values.participationConditions}
+            onChange={(e) => set("participationConditions", e.target.value)}
+            className={CONTROL + " mt-2 block w-full"}
+          />
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={values.waitlistEnabled}
+            onChange={(e) => set("waitlistEnabled", e.target.checked)}
+          />
+          キャンセル待ちを受け付ける
+        </label>
+      </fieldset>
+      {error && (
+        <div role="alert">
+          <p>{error}</p>
+          <p>
+            編集競合の場合は入力内容を控え、画面を再読み込みして最新の内容を確認してください。
+          </p>
         </div>
-      </FormField>
-
-      {mode === "edit" && lastUpdated && (
-        <p className="text-sm text-fg-neutral-secondary">
-          最終更新：{lastUpdated}
-        </p>
       )}
-
       <div className="flex gap-4">
-        {mode === "edit" && (
-          // 削除の動作は確認モーダルと一緒に別PRで実装
+        {canPublish && (
           <button
             type="button"
-            className={`${FORM_BUTTON} border-fg-warning-primary bg-white text-fg-warning-primary`}
+            disabled={busy || !values.title.trim()}
+            className={CONTROL}
+            onClick={() => void save(false)}
           >
-            削除
+            下書き保存
           </button>
         )}
-        {/* 下書き保存の動作はAPI接続のPRで実装 */}
-        <button
-          type="button"
-          disabled={!canSaveDraft}
-          className={`${FORM_BUTTON} border-fg-neutral-secondary bg-white text-fg-neutral-secondary disabled:opacity-50`}
-        >
-          下書き保存
-        </button>
         <button
           type="submit"
-          disabled={!canPublish}
-          className={`${FORM_BUTTON} border-fg-brand-primary bg-fg-brand-primary text-fg-inverse-primary disabled:opacity-50`}
+          disabled={busy || !values.title.trim()}
+          className={BUTTON}
         >
-          保存して公開する
+          {busy ? "保存中…" : canPublish ? "保存して公開する" : "保存"}
         </button>
       </div>
-
       <ConfirmDialog
-        isOpen={isLeaveDialogOpen}
+        isOpen={leave}
         title="入力内容が保存されていません"
-        description="このまま戻ると、入力した内容は破棄されます。"
+        description="入力内容を破棄して一覧に戻りますか？"
         confirmLabel="破棄して戻る"
         cancelLabel="編集を続ける"
-        onConfirm={navigateBack}
-        onCancel={() => setIsLeaveDialogOpen(false)}
+        onConfirm={() => router.push("/organizer/event-management")}
+        onCancel={() => setLeave(false)}
       />
     </form>
   );
