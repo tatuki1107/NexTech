@@ -17,6 +17,7 @@
 | UI-07 | 詳細検索で複数条件を適用し、一覧上で1つずつ解除する | 解除した条件だけが消え、残りの条件と件数が更新される。0件でも個別解除できる。 | 合格。[スマホ幅390px](screenshots/participant-test/participant-applied-mobile.jpg)でキーワード・開催日・2タグ・形式・並び順を適用し、キーボードとクリックで個別に解除。[PC幅1100px](screenshots/participant-test/participant-applied-desktop.jpg)で2タグと開催形式を解除し、1→2→1→4件と更新。0→1件への復帰も確認。 |
 | UI-08 | 詳細検索で「会場」「オンライン」「ハイブリッド」をそれぞれ適用・解除する | 選択した形式のカードだけが表示され、解除すると全形式に戻る。他条件は残る。 | 合格。[スマホ幅390px](screenshots/participant-test/participant-format-filter-mobile.jpg)・[PC幅1100px](screenshots/participant-test/participant-format-filter-desktop.jpg)で会場1件・オンライン1件・ハイブリッド2件、各解除後は全4件。検索条件ページから指定したタグは、形式だけ解除して再読み込みしても残った。 |
 | UI-09 | URLから適用した条件の個別解除・一括クリア後にページを再読み込みする | 解除済み条件は復活しない。個別解除では残りの条件が、一括クリアでは無関係なURLパラメータが残る。 | 合格。Dockerタグの解除後に再読み込みしてもハイブリッド2件。一括クリア後は無関係な `source` だけが残り、再読み込み後も全4件。 |
+| UI-10 | 参加URLと申込ボタンが両方表示されるイベント詳細で、保存ボタンからTabを押す | 参加URLにフォーカスが当たり、リンク全体とフォーカス枠が固定ボタンより上に見える。申込ボタンの位置は変わらない。 | 合格。[スマホ幅390×820](screenshots/participant-test/pr30-focus-mobile.jpg)・[PC幅1100×860](screenshots/participant-test/pr30-focus-desktop.jpg)で、Tab後にリンクと固定ボタンの間隔が8px以上あり、固定ボタンの座標が変わらないことを確認。 |
 
 ## 自動テスト
 

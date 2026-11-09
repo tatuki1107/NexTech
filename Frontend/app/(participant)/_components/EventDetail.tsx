@@ -5,12 +5,29 @@ import { ParticipantShell } from "@/app/(participant)/_components/ParticipantShe
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import FmdGoodOutlinedIcon from "@mui/icons-material/FmdGoodOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import type { FocusEvent } from "react";
 
 import {
   formatEventDate,
   formatDeadline,
   type EventDetailData,
 } from "../_lib/event-detail";
+
+function handleOnlineLinkFocus({ currentTarget: link }: FocusEvent<HTMLAnchorElement>) {
+  if (!link.matches(":focus-visible")) return;
+
+  const shell = link.closest(".user-app");
+  const applyButton = shell?.querySelector(".floating-apply-button");
+  const navigation = shell?.querySelector(".bottom-navigation");
+  const visibleBottom = Math.min(
+    window.innerHeight,
+    applyButton?.getBoundingClientRect().top ?? window.innerHeight,
+    navigation?.getBoundingClientRect().top ?? window.innerHeight,
+  );
+  // Native focus scrolling does not account for fixed controls covering the link.
+  const distance = link.getBoundingClientRect().bottom + 8 - visibleBottom;
+  if (distance > 0) window.scrollBy({ top: Math.ceil(distance), behavior: "instant" });
+}
 
 export function EventDetail({
   event,
@@ -107,9 +124,11 @@ export function EventDetail({
             <section className="description-block">
               <h2>オンライン参加</h2>
               <a
+                className="event-online-link"
                 href={event.onlineUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onFocus={handleOnlineLinkFocus}
               >
                 参加URLを開く
               </a>

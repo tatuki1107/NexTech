@@ -1728,6 +1728,10 @@
 .participant :global(.description-block) {
   margin-top: 24px;
 }
+.participant :global(.event-online-link:focus-visible) {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
 
 .participant :global(.event-meta dt) {
   display: flex;
