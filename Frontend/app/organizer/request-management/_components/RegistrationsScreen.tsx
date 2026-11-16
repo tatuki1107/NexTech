@@ -109,8 +109,14 @@ export default function RegistrationsScreen({
       <h2 className="text-xl font-bold">
         {acceptance ? "当日受付" : "申込者一覧"}
       </h2>
-      <div className="grid grid-cols-3 gap-6">
-        <SummaryCard label="参加確定枠" value={confirmed} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+        <SummaryCard
+          label="参加確定枠"
+          value={acceptance || event.data.capacity == null ? confirmed : `${confirmed} / ${event.data.capacity}`}
+          note={!acceptance && event.data.capacity != null
+            ? `残り ${Math.max(0, event.data.capacity - confirmed)} 枠`
+            : undefined}
+        />
         <SummaryCard
           label={acceptance ? "受付済み" : "待機"}
           value={

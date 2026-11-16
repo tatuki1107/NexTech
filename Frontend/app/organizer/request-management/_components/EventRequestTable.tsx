@@ -19,8 +19,8 @@ export default function EventRequestTable({ events }: EventRequestTableProps) {
   }
 
   return (
-    <div className="max-h-[calc(100vh-32rem)] overflow-y-auto rounded-xl border border-ol-neutral-primary bg-white">
-      <table className="w-full">
+    <div className="max-h-[calc(100vh-32rem)] overflow-auto rounded-xl border border-ol-neutral-primary bg-white">
+      <table className="w-full min-w-[39rem]">
         <thead className="sticky top-0 z-10 bg-bg-neutral-primary">
           <tr className="text-left text-sm text-fg-neutral-secondary">
             <th scope="col" className={CELL}>
@@ -57,7 +57,12 @@ export default function EventRequestTable({ events }: EventRequestTableProps) {
               <td
                 className={`${CELL} text-center text-base font-bold text-fg-neutral-primary`}
               >
-                {event.applied}
+                {event.applied}{event.capacity != null && ` / ${event.capacity}`}
+                {event.capacity != null && (
+                  <span className="block whitespace-nowrap text-xs font-normal text-fg-neutral-secondary">
+                    残り {Math.max(0, event.capacity - event.applied)} 枠
+                  </span>
+                )}
               </td>
               <td
                 className={`${CELL} text-center text-base font-bold text-fg-neutral-primary`}

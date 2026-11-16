@@ -47,14 +47,19 @@ export const monthlyAnalytics = async (
   const scope = filteredEvents(filter);
   return sqlClient.unsafe(
     `WITH scoped AS (${scope.sql}), months AS (
-   SELECT generate_series(date_trunc('month',$1::date::timestamp),date_trunc('month',$2::date::timestamp),interval '1 month') AS month)
+   SELECT generate_series(date_trunc('month',$1::date::timestamp),date_trunc('month',$2::date::timestamp),interval '1 month') AS month),
+  capacity_by_month AS (
+   SELECT date_trunc('month',start_at AT TIME ZONE 'Asia/Tokyo') AS month,
+    sum(capacity)::int AS capacity FROM scoped GROUP BY 1)
   SELECT to_char(months.month,'YYYY-MM') AS month,count(DISTINCT e.id)::int AS "eventCount",
    count(r.id) FILTER(WHERE r.status<>'cancelled')::int AS "registrationCount",
    count(DISTINCT r.user_id) FILTER(WHERE r.status IN ('confirmed','checked_in'))::int AS "participantCount",
    count(r.id) FILTER(WHERE r.status IN ('pending','confirmed','checked_in','no_show'))::int AS "confirmedCount",
-   count(r.id) FILTER(WHERE r.status='checked_in')::int AS "attendedCount"
-  FROM months LEFT JOIN scoped e ON date_trunc('month',e.start_at AT TIME ZONE 'Asia/Tokyo')=months.month
-   LEFT JOIN registrations r ON r.event_id=e.id GROUP BY months.month ORDER BY months.month`,
+   count(r.id) FILTER(WHERE r.status='checked_in')::int AS "attendedCount",
+   COALESCE(c.capacity,0) AS capacity,
+   count(r.id) FILTER(WHERE r.status<>'cancelled')::float8 / NULLIF(c.capacity,0) AS "applicationRate"
+  FROM months LEFT JOIN capacity_by_month c ON c.month=months.month LEFT JOIN scoped e ON date_trunc('month',e.start_at AT TIME ZONE 'Asia/Tokyo')=months.month
+   LEFT JOIN registrations r ON r.event_id=e.id GROUP BY months.month,c.capacity ORDER BY months.month`,
     scope.values,
   );
 };

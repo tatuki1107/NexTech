@@ -74,6 +74,7 @@ export type AdminRecord = {
   status: string;
   columns: [string, string];
   fields: [label: string, value: string][];
+  content?: [label: string, value: string][];
 };
 
 type EventRecord = {
@@ -85,6 +86,8 @@ type EventRecord = {
   organizer: { name: string };
   format: "online" | "offline" | "hybrid" | null;
   capacity: number | null;
+  description: string | null;
+  participationConditions: string | null;
 };
 type OrganizerRecord = {
   id: string;
@@ -151,6 +154,10 @@ function mapEvent(row: EventRecord): AdminRecord {
       ],
       ["開催形式", row.format ? formats[row.format] : "—"],
       ["定員", row.capacity === null ? "—" : `${row.capacity} 名`],
+    ],
+    content: [
+      ["イベント本文", row.description?.trim() || "—"],
+      ["参加条件", row.participationConditions?.trim() || "記載なし"],
     ],
   };
 }

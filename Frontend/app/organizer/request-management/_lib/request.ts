@@ -6,5 +6,6 @@ export type EventRequestSummary = {
   schedule: string;
   status: EventStatus;
   applied: number;
+  capacity: number | null;
   waitlisted: number;
 };

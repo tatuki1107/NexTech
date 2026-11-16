@@ -974,7 +974,7 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       await apply(created.id, users[1]);
       const query = `from=2090-01-01&to=2090-01-31&organizerId=${organizerId}`;
       const monthly = await call<
-        Array<{ eventCount: number; participantCount: number }>
+        Array<{ eventCount: number; participantCount: number; capacity: number; applicationRate: number }>
       >(
         "/admin/analytics/monthly-participants?" + query,
         "GET",
@@ -984,6 +984,8 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       expect(monthly.status).toBe(200);
       expect(monthly.data[0].eventCount).toBeGreaterThanOrEqual(1);
       expect(monthly.data[0].participantCount).toBe(2);
+      expect(monthly.data[0].capacity).toBe(12);
+      expect(monthly.data[0].applicationRate).toBeCloseTo(2 / 12);
       for (const groupBy of ["category", "organizer", "format"]) {
         const groups = await call<
           Array<{ capacity: number; applicationRate: number }>

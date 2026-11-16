@@ -810,3 +810,24 @@
     grid-row: auto;
   }
 }
+
+.recordText .fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+.recordText dd {
+  white-space: pre-wrap;
+}
+.analyticsSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.analyticsSummary > div {
+  padding: 20px;
+}
+.analyticsSummary dd {
+  margin: 8px 0 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}

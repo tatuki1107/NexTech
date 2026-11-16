@@ -3295,6 +3295,8 @@ components:
         - participantCount
         - confirmedCount
         - attendedCount
+        - capacity
+        - applicationRate
       properties:
         month:
           type: string
@@ -3312,6 +3314,13 @@ components:
           minimum: 0
         attendedCount:
           type: integer
+          minimum: 0
+        capacity:
+          type: integer
+          minimum: 0
+        applicationRate:
+          type: number
+          nullable: true
           minimum: 0
     AnalyticsGroup:
       type: object
