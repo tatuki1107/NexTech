@@ -122,6 +122,43 @@ describe.skipIf(process.env.RUN_DB_TESTS !== "1")(
       expect(registration.status).toBe("confirmed");
     });
 
+    test("restoring an organizer fills available seats in upcoming published events once", async () => {
+      const upcoming = await createEvent();
+      const concurrent = await createEvent();
+      const draft = await createEvent("draft");
+      const past = await createEvent("published", true);
+      for (const id of [upcoming, concurrent, draft, past]) await registerPair(id);
+      const statusPath = `/api/v1/admin/organizers/${organizerId}/status`;
+      const setStatus = (status: string) => call(statusPath, "PATCH", ownerToken, { status, reason: "Regression fixture" });
+      expect((await setStatus("suspended")).status).toBe(200);
+      for (const id of [upcoming, draft]) {
+        expect((await call(`/api/v1/events/${id}/registration`, "DELETE", firstToken)).status).toBe(200);
+      }
+      const [duringStop] = await sqlClient`SELECT status FROM registrations WHERE event_id=${upcoming} AND user_id=${second}`;
+      expect(duringStop.status).toBe("waitlisted");
+      // Give the past event an empty seat without using the cancellation endpoint.
+      await sqlClient`UPDATE registrations SET status='cancelled' WHERE event_id=${past} AND user_id=${first}`;
+      const results = await Promise.all([
+        setStatus("active"),
+        call(`/api/v1/events/${concurrent}/registration`, "DELETE", firstToken),
+      ]);
+      expect(results.map((result) => result.status)).toEqual([200, 200]);
+      expect((await setStatus("active")).status).toBe(200);
+
+      for (const id of [upcoming, concurrent]) {
+        const [row] = await sqlClient`SELECT status,waitlist_position FROM registrations WHERE event_id=${id} AND user_id=${second}`;
+        expect(row).toMatchObject({ status: "confirmed", waitlist_position: null });
+        const [history] = await sqlClient`SELECT count(*)::int AS count FROM registration_status_histories h
+          JOIN registrations r ON r.id=h.registration_id
+          WHERE r.event_id=${id} AND r.user_id=${second} AND h.reason='automatic_promotion'`;
+        expect(history.count).toBe(1);
+      }
+      for (const id of [draft, past]) {
+        const [row] = await sqlClient`SELECT status FROM registrations WHERE event_id=${id} AND user_id=${second}`;
+        expect(row.status).toBe("waitlisted");
+      }
+    });
+
     test("valid single and multiple UUID tag filters work", async () => {
       const tags: string[] = [];
       for (let index = 0; index < 2; index++) {

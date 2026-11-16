@@ -11,6 +11,7 @@ import {
 } from "../../_lib/api";
 import EventCard from "../../event-management/_components/EventCard";
 import { useState } from "react";
+import { isEventOnAcceptanceDate } from "../_lib/acceptance-date";
 export default function AcceptanceEventsScreen() {
   const { organization } = useOrganizer();
   const { data, error, reload } = useResource<ManagedEvent[]>(
@@ -18,12 +19,7 @@ export default function AcceptanceEventsScreen() {
     true,
   );
   const [date, setDate] = useState(tokyoDate());
-  const events = data?.filter(
-    (event) =>
-      event.status === "published" &&
-      event.startAt &&
-      tokyoDate(new Date(event.startAt)) === date,
-  );
+  const events = data?.filter((event) => isEventOnAcceptanceDate(event, date));
   return (
     <div className="space-y-8">
       <PageTitle title="当日受付" />

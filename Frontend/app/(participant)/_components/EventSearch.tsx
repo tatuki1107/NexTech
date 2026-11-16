@@ -6,7 +6,9 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getPublicEvents } from "../_lib/event-list";
-import { matchesEventFilters, type EventFilters } from "../_lib/event-search-filter";
+import { matchesEventFilters, quickDateLabel, type EventFilters } from "../_lib/event-search-filter";
+import { formatEventDate } from "../_lib/event-detail";
+import { tokyoDate } from "@/app/_lib/calendar-date";
 import {
   DEFAULT_EVENT_FILTERS,
   readEventSearchQuery,
@@ -36,17 +38,6 @@ type ApiEvent = {
 };
 
 type SortOption = "おすすめ" | "申し込み期間" | "残席順";
-
-function formatEventDate(startAt: string, endAt: string) {
-  const startDate = new Date(startAt);
-  const endDate = new Date(endAt);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()))
-    return "日時未定";
-  const weekday = ["日", "月", "火", "水", "木", "金", "土"][
-    startDate.getDay()
-  ];
-  return `${startDate.getMonth() + 1}/${startDate.getDate()}（${weekday}） ${startDate.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false })} - ${endDate.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
-}
 
 function sortEvents(events: ApiEvent[], sort: SortOption) {
   if (sort === "おすすめ") return events;
@@ -167,12 +158,7 @@ export function EventSearch() {
   const dates = Array.from(
     new Set(
       events
-        .map((event) => {
-          const eventDate = new Date(event.startAt);
-          return Number.isNaN(eventDate.getTime())
-            ? ""
-            : `${eventDate.getMonth() + 1}/${eventDate.getDate()}`;
-        })
+        .map((event) => quickDateLabel(tokyoDate(new Date(event.startAt))))
         .filter(Boolean),
     ),
   );

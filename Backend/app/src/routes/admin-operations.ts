@@ -9,7 +9,7 @@ import {
   escapeLike,
   assertDateRange,
 } from "../lib/validation";
-import { WAITLIST_RANK_SQL } from "../services/registrations";
+import { promoteWaitlist, WAITLIST_RANK_SQL } from "../services/registrations";
 
 const pageFields = {
   page: t.Optional(t.Numeric()),
@@ -134,6 +134,12 @@ export const adminOperationsRoutes = new Elysia({ prefix: "/admin" })
     async ({ headers, params, body }) => {
       const actor = await requireAdmin(headers.authorization);
       const result = await sqlClient.begin(async (tx) => {
+        // Registration and event operations lock the event before the organizer.
+        const upcomingEvents = body.status === "active"
+          ? await tx`SELECT id FROM events
+              WHERE organizer_id=${params.organizerId} AND status='published' AND start_at>now()
+              ORDER BY id FOR UPDATE`
+          : [];
         const [current] =
           await tx`SELECT status FROM organizers WHERE id=${params.organizerId} FOR UPDATE`;
         if (!current) throw notFound("主催者が見つかりません");
@@ -141,6 +147,9 @@ export const adminOperationsRoutes = new Elysia({ prefix: "/admin" })
           await tx`UPDATE organizers SET status=${body.status},updated_at=now() WHERE id=${params.organizerId}`;
           await tx`INSERT INTO moderation_actions(actor_user_id,target_type,target_id,action,reason,metadata)
       VALUES(${actor.id},'organizer',${params.organizerId},${body.status},${body.reason},${JSON.stringify({ fromStatus: current.status, status: body.status })}::jsonb)`;
+          for (const event of upcomingEvents) {
+            await promoteWaitlist(tx, String(event.id));
+          }
         }
         return { id: params.organizerId, status: body.status };
       });
