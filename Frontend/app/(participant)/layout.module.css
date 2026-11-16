@@ -1033,11 +1033,13 @@
 }
 .participant :global(.page-heading h1),
 .participant :global(.my-page-title h1) {
-  font-size: 22px;
+  font-size: 24px;
+  font-weight: 700;
   letter-spacing: -0.7px;
 }
 .participant :global(.top-page-heading h1) {
-  font-size: 17px;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1.45;
 }
 .participant :global(.top-page-heading > p:last-child) {
@@ -1556,12 +1558,15 @@
 .participant :global(.registration-confirmation-dialog) {
   position: fixed;
   inset: 0;
-  width: min(calc(100% - 32px), 360px);
+  width: min(calc(100vw - 32px), 361px);
+  max-width: none;
   max-height: calc(100dvh - 32px);
+  padding: 24px;
+  border-radius: 16px;
   margin: auto;
   overflow: auto;
   border: 0;
-  color: var(--ink);
+  color: #171717;
 }
 .participant :global(.registration-confirmation-dialog::backdrop) {
   background: rgb(20 26 41 / 44%);
@@ -1688,7 +1693,8 @@
 }
 .participant :global(.detail-body > h1) {
   margin: 9px 0 18px;
-  font-size: 22px;
+  font-size: 24px;
+  font-weight: 700;
 }
 .participant :global(.event-meta) {
   gap: 10px;
@@ -1847,7 +1853,8 @@
 .participant :global(.filter-page > h1) {
   margin: 0 0 3px;
   color: var(--ink);
-  font-size: 20px;
+  font-size: 24px;
+  font-weight: 700;
   letter-spacing: -0.5px;
 }
 .participant :global(.notifications-page .page-heading p),
@@ -2151,3 +2158,248 @@
   color: #111827;
 }
 .participant :global(button:disabled) { cursor: not-allowed; opacity: 0.6; }
+
+.participant :global(.registration-confirmation-dialog h2) {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.participant :global(.registration-confirmation-details) {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 12px;
+}
+.participant :global(.registration-confirmation-details strong) {
+  font-size: 20px;
+  line-height: 1.45;
+}
+.participant :global(.registration-confirmation-details dl) {
+  margin-top: 24px;
+  gap: 16px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  color: #363d59;
+  font-size: 14px;
+}
+.participant :global(.registration-confirmation-details dt) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.participant :global(.registration-confirmation-dialog .modal-actions) {
+  gap: 16px;
+  margin-top: 24px;
+}
+.participant :global(.registration-confirmation-dialog .modal-actions button) {
+  min-height: 50px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.participant :global(.registration-confirmation-dialog .modal-secondary) {
+  border: 2px solid #e3e4e8;
+  color: #171717;
+}
+
+.participant :global(.auth-page) {
+  margin: 0 auto;
+  padding: 28px 28px 40px;
+  max-width: 393px;
+}
+.participant :global(.auth-page[data-step="input"]) {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+}
+.participant :global(.auth-brand) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 56px;
+  color: #171717;
+  font-size: 24px;
+  font-weight: 700;
+}
+.participant :global(.auth-brand .brand-mark) {
+  font-size: 36px;
+  line-height: 1;
+}
+.participant :global(.auth-footer) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 24px;
+  border-top: 1px solid var(--line);
+  margin-top: auto;
+  padding-top: 20px;
+  font-size: 14px;
+}
+.participant :global(.auth-footer a) {
+  color: var(--blue);
+  font-weight: 700;
+}
+.participant :global(.auth-page[data-step="input"] .auth-safety-note) {
+  margin-bottom: 32px;
+}
+.participant :global(.auth-page h1) {
+  border-left: 4px solid var(--blue);
+  padding-left: 16px;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.participant :global(.auth-page .auth-confirm-heading) {
+  font-size: 24px;
+}
+.participant :global(.auth-page form) {
+  display: grid;
+  gap: 20px;
+  margin-top: 24px;
+}
+.participant :global(.auth-page label),
+.participant :global(.auth-password-control) {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+.participant :global(.auth-input-wrap) {
+  position: relative;
+  display: block;
+}
+.participant :global(.auth-page input) {
+  width: 100%;
+  min-height: 50px;
+  padding: 10px 45px 10px 14px;
+  border: 1px solid #e3e4e8;
+  border-radius: 8px;
+  font-weight: 400;
+}
+.participant :global(.auth-input-icon) {
+  position: absolute;
+  inset-inline-end: 10px;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+}
+.participant :global(button.auth-input-icon) {
+  background: transparent;
+  border: 0;
+  min-width: 36px;
+  min-height: 44px;
+  inset-inline-end: 4px;
+}
+.participant :global(.auth-page .primary-button),
+.participant :global(.auth-page .modal-secondary) {
+  min-height: 50px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+.participant :global(.auth-safety-note) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.participant :global(.auth-steps) {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 22px 0 0;
+  padding: 0 18px;
+  list-style: none;
+  color: var(--muted);
+}
+.participant :global(.auth-steps::before) {
+  content: "";
+  position: absolute;
+  inset: 18px 42px auto;
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--blue) 50%, var(--line) 50%);
+}
+.participant :global(.auth-page[data-step="confirm"] .auth-steps::before) {
+  background: var(--blue);
+}
+.participant :global(.auth-steps li) {
+  z-index: 0;
+  display: grid;
+  min-width: 60px;
+  justify-items: center;
+  gap: 5px;
+  font-size: 14px;
+}
+.participant :global(.auth-steps li span) {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ecedf0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.participant :global(.auth-steps [aria-current="step"]),
+.participant :global(.auth-steps [data-complete]) {
+  color: var(--blue);
+}
+.participant :global(.auth-steps [aria-current="step"] span),
+.participant :global(.auth-steps [data-complete] span) {
+  background: var(--blue);
+  color: #fff;
+}
+.participant :global(.auth-confirm-details) {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #e3e4e8;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.participant :global(.auth-confirm-details dt) {
+  color: var(--muted);
+}
+.participant :global(.auth-confirm-details dt:not(:first-child)) {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.participant :global(.auth-confirm-details dd) {
+  margin: 0 0 8px;
+}
+.participant :global(.auth-page .modal-secondary) {
+  border: 1px solid var(--blue);
+  color: var(--blue);
+}
+.participant :global(.auth-complete) {
+  display: grid;
+  gap: 16px;
+  text-align: center;
+}
+.participant :global(.auth-complete h1) {
+  padding: 0;
+  border: 0;
+  font-size: 26px;
+}
+.participant :global(.auth-complete > p) {
+  padding: 16px;
+  border-radius: 8px;
+  background: #d6e5f5;
+  text-align: left;
+}
+.participant :global(.auth-complete img) {
+  width: 56px;
+  height: 56px;
+  margin: auto;
+  padding: 14px;
+  border-radius: 50%;
+  background: #d6e5f5;
+}
+.participant :global(.auth-page [role="alert"]) {
+  color: #a4272e;
+}

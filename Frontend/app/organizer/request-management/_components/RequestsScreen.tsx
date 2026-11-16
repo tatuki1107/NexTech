@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useOrganizer } from "../../_components/OrganizerProvider";
-import { ApiState, CONTROL, PageTitle } from "../../_components/ApiState";
+import { ApiState, CONTROL } from "../../_components/ApiState";
 import { useResource } from "../../_lib/use-resource";
 import { organizerPath, eventView, type ManagedEvent } from "../../_lib/api";
 import EventRequestTable from "./EventRequestTable";
@@ -34,12 +34,12 @@ export default function RequestsScreen() {
     });
   return (
     <div className="space-y-8">
-      <PageTitle title="申込管理" />
+      <h1 className="text-3xl font-bold md:text-[26px]">申込管理</h1>
       {!data ? (
         <ApiState error={error} retry={reload} />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+          <div className="grid grid-cols-3 gap-2 md:gap-6">
             <SummaryCard label="イベント" value={data.length} />
             <SummaryCard
               label="参加確定枠"

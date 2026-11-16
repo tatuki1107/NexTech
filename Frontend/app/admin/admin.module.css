@@ -831,3 +831,129 @@
   font-size: 1.5rem;
   font-weight: 700;
 }
+
+.suspensionDialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(600px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: clamp(20px, 5vw, 36px);
+  border: 1px solid #e3e4e8;
+  border-radius: 12px;
+  background: white;
+  color: #363d59;
+  white-space: normal;
+}
+.suspensionDialog::backdrop {
+  background: rgb(18 25 43 / 50%);
+}
+.suspensionForm, .suspensionComplete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow-wrap: anywhere;
+  gap: 22px;
+  text-align: center;
+}
+.suspensionForm h2, .suspensionComplete h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.suspensionForm p, .suspensionComplete p {
+  margin: 0;
+}
+.suspensionForm > p, .suspensionComplete > p {
+  font-size: 14px;
+}
+.warningIcon, .successIcon {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff1f1;
+}
+.successIcon {
+  background: #d8e8f8;
+}
+.suspensionTarget, .suspensionSummary {
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: #f0f0f4;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.suspensionTarget strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 18px;
+}
+.suspensionTarget p {
+  font-size: 14px;
+}
+.suspensionReason {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 14px;
+}
+.suspensionReason textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #d6dae3;
+  border-radius: 8px;
+  resize: vertical;
+  font-weight: 400;
+}
+.suspensionActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.suspensionActions > * {
+  display: grid;
+  place-items: center;
+  min-height: 50px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.suspensionSecondary {
+  background: white;
+  color: #0051f5;
+  border: 1px solid #0051f5;
+}
+.suspensionDanger {
+  background: #cc3a44;
+  color: white;
+  border: 1px solid #cc3a44;
+}
+.suspensionActions button:disabled {
+  opacity: .55;
+}
+.suspensionError {
+  color: #a4272e;
+}
+.suspensionComplete {
+  width: min(100%, 640px);
+  margin: clamp(12px, 5vw, 72px) auto;
+  padding: clamp(20px, 5vw, 32px);
+  border: 1px solid #e3e4e8;
+  border-radius: 12px;
+  background: white;
+}
+.suspensionComplete h2 {
+  font-size: 26px;
+}
+.suspensionComplete .suspensionSummary {
+  background: #d8e8f8;
+}
