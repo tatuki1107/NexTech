@@ -15,7 +15,8 @@ test("participant proxy does not expose organizer/admin mutations or arbitrary u
 
 test("admin proxy passes console reads and authorization through to the backend", async () => {
   const id = "11111111-1111-4111-8111-111111111111";
-  for (const path of ["admin/events", `admin/organizers/${id}`, `admin/registrations/${id}`, "admin/moderation-actions", "admin/analytics/monthly-participants", "admin/analytics/breakdown"]) {
+  const histories = ["events", "organizers", "registrations"].map((section) => `admin/${section}/${id}/history`);
+  for (const path of ["admin/events", `admin/organizers/${id}`, `admin/registrations/${id}`, "admin/moderation-actions", "admin/analytics/monthly-participants", "admin/analytics/breakdown", ...histories]) {
     const response = await proxyParticipantApi(
       request(path + "?page=2", "GET", { cookie: "nextechAccessToken=console-token" }),
       path.split("/"),
@@ -31,6 +32,7 @@ test("admin proxy passes console reads and authorization through to the backend"
   }
   for (const [path, method] of [
     [`admin/events/${id}`, "DELETE"], ["admin/analytics/unknown", "GET"], ["admin/events/not-an-id", "GET"],
+    [`admin/events/${id}/history`, "POST"], [`admin/events/${id}/history/extra`, "GET"],
   ]) {
     assert.equal((await proxyParticipantApi(
       request(path, method), path.split("/"), () => { throw Error("must not fetch"); },

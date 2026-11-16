@@ -1,12 +1,10 @@
 import { matchesEventFormat, type EventFormatFilter } from "./event-format";
+import { tokyoDate } from "../../_lib/calendar-date";
 
 export function matchesDateFilter(eventDate: Date, filter: string) {
   if (filter === "すべて") return true;
   if (/^\d{4}-\d{2}-\d{2}$/.test(filter)) {
-    return (
-      `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}` ===
-      filter
-    );
+    return tokyoDate(eventDate) === filter;
   }
   const now = new Date();
   const startOfToday = new Date(
@@ -38,9 +36,18 @@ export type SearchableEvent = {
 export type EventFilters = {
   keyword: string;
   date: string;
+  dateFrom?: string;
+  dateTo?: string;
   tags: string[];
   format: EventFormatFilter;
 };
+
+function matchesEventDate(startAt: string, { date, dateFrom, dateTo }: EventFilters) {
+  const start = new Date(startAt);
+  if (!dateFrom && !dateTo) return matchesDateFilter(start, date);
+  const day = tokyoDate(start);
+  return Boolean(day) && (!dateFrom || day >= dateFrom) && (!dateTo || day <= dateTo);
+}
 
 export function matchesEventFilters(
   event: SearchableEvent,
@@ -55,6 +62,6 @@ export function matchesEventFilters(
         filters.tags.includes(tag),
       )) &&
     matchesEventFormat(event.format, filters.format) &&
-    matchesDateFilter(new Date(event.startAt), filters.date)
+    matchesEventDate(event.startAt, filters)
   );
 }
