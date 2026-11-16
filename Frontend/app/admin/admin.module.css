@@ -845,6 +845,7 @@
   border-radius: 12px;
   background: white;
   color: #363d59;
+  white-space: normal;
 }
 .suspensionDialog::backdrop {
   background: rgb(18 25 43 / 50%);
