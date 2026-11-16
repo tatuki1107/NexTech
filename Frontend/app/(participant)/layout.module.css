@@ -1553,7 +1553,7 @@
   text-align: center;
   box-shadow: 0 15px 40px rgb(0 0 0 / 18%);
 }
-.participant :global(.registration-cancel-dialog) {
+.participant :global(.registration-confirmation-dialog) {
   position: fixed;
   inset: 0;
   width: min(calc(100% - 32px), 360px);
@@ -1563,11 +1563,29 @@
   border: 0;
   color: var(--ink);
 }
-.participant :global(.registration-cancel-dialog::backdrop) {
+.participant :global(.registration-confirmation-dialog::backdrop) {
   background: rgb(20 26 41 / 44%);
 }
-.participant :global(.registration-cancel-dialog [role="alert"]) {
+.participant :global(.registration-confirmation-dialog [role="alert"]) {
   color: #a4272e;
+}
+.participant :global(.registration-confirmation-details) {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #d8dce5;
+  border-radius: 10px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.participant :global(.registration-confirmation-details dl) {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+.participant :global(.registration-confirmation-details dd) {
+  margin: 0;
 }
 .participant :global(.modal-close) {
   position: absolute;

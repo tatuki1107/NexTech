@@ -32,9 +32,11 @@ function handleOnlineLinkFocus({ currentTarget: link }: FocusEvent<HTMLAnchorEle
 export function EventDetail({
   event,
   onChanged,
+  notice,
 }: {
   event: EventDetailData;
-  onChanged: () => void;
+  onChanged: (message: string) => void;
+  notice?: string;
 }) {
   const deadline = formatDeadline(event.applicationDeadline);
   const applicationRate = event.capacity ? Math.min(
@@ -136,7 +138,7 @@ export function EventDetail({
           )}
         </div>
       </article>
-      <EventAction event={event} onChanged={onChanged} />
+      <EventAction event={event} onChanged={onChanged} notice={notice} />
     </ParticipantShell>
   );
 }

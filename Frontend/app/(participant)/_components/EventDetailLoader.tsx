@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 import { useApiData } from "../_lib/use-api-data";
 import type { ParticipantEvent, Registration } from "../_lib/types";
 import { EventDetail } from "./EventDetail";
@@ -46,6 +47,7 @@ function RegistrationDetail({ id }: { id: string }) {
 
 export function EventDetailLoader({ id }: { id: string }) {
   const session = useParticipant();
+  const [notice, setNotice] = useState<{ eventId: string; userId: string | undefined; text: string }>();
   const { data, loading, error, errorStatus, reload } = useApiData<{
     data: ParticipantEvent;
   }>(
@@ -75,7 +77,11 @@ export function EventDetailLoader({ id }: { id: string }) {
         applicationCount: event.confirmedCount,
         seatsLeft: Math.max(0, event.capacity - event.confirmedCount),
       }}
-      onChanged={reload}
+      notice={notice && notice.eventId === id && notice.userId === session.user?.id ? notice.text : undefined}
+      onChanged={(message) => {
+        setNotice({ eventId: id, userId: session.user?.id, text: message });
+        reload();
+      }}
     />
   );
 }

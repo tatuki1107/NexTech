@@ -15,10 +15,26 @@ type Counts = {
   participantCount: number;
   attendedCount: number;
 };
-type Month = Counts & { month: string };
+type Month = Counts & { month: string; capacity: number; applicationRate: number | null };
 type Group = Counts & { groupId: string; groupName: string; applicationRate: number | null };
 const FORMAT_LABELS: Record<string, string> = { online: "オンライン", offline: "会場開催", hybrid: "ハイブリッド" };
 const percent = new Intl.NumberFormat("ja-JP", { style: "percent", maximumFractionDigits: 1 });
+
+function AnalyticsSummary({ months }: { months: Month[] }) {
+  const totals = months.reduce((sum, month) => ({
+    events: sum.events + month.eventCount,
+    participants: sum.participants + month.participantCount,
+    registrations: sum.registrations + month.registrationCount,
+    capacity: sum.capacity + month.capacity,
+  }), { events: 0, participants: 0, registrations: 0, capacity: 0 });
+  return (
+    <dl className={styles.analyticsSummary}>
+      <div className={styles.card}><dt>期間内の開催数</dt><dd>{totals.events.toLocaleString("ja-JP")}</dd></div>
+      <div className={styles.card}><dt>参加者数（月別合計）</dt><dd>{totals.participants.toLocaleString("ja-JP")}</dd></div>
+      <div className={styles.card}><dt>申込率（申込数 ÷ 定員）</dt><dd>{totals.capacity ? percent.format(totals.registrations / totals.capacity) : "—"}</dd></div>
+    </dl>
+  );
+}
 
 function MetricsTable({ title, label, rows, showRate = false }: {
   title: string;
@@ -95,9 +111,10 @@ export default function AdminAnalytics({ from, to, groupBy, metric, compareFrom,
         {result.status === "loading" && <AdminDataState />}
         {result.status === "error" && <AdminDataState message={result.message} reload={dateError ? undefined : reload} />}
         {result.status === "ready" && <>
-          <MetricsTable title={`月別の開催・参加状況（${from} 〜 ${to}）`} label="開催月" rows={result.data.monthly.map((row) => ({ ...row, id: row.month, name: row.month }))} />
+          <AnalyticsSummary months={result.data.monthly} />
+          <MetricsTable title={`月別の開催・参加状況（${from} 〜 ${to}）`} label="開催月" showRate rows={result.data.monthly.map((row) => ({ ...row, id: row.month, name: row.month }))} />
           {result.data.comparison && <MetricsTable title={`比較期間の開催・参加状況（${compareFrom} 〜 ${compareTo}）`}
-            label="開催月" rows={result.data.comparison.map((row) => ({ ...row, id: row.month, name: row.month }))} />}
+            label="開催月" showRate rows={result.data.comparison.map((row) => ({ ...row, id: row.month, name: row.month }))} />}
           <MetricsTable title={`${groupLabel}別の内訳（${METRIC_LABELS[metric]}順・上位10件）`} label={groupLabel} showRate
             rows={result.data.groups.map((row) => ({ ...row, id: row.groupId, name: groupBy === "format" ? FORMAT_LABELS[row.groupName] ?? row.groupName : row.groupName }))} />
         </>}

@@ -136,6 +136,12 @@ function RecordContent({
         </div>
         <RecordFields fields={record.fields} />
       </section>
+      {!preview && record.content && (
+        <section className={styles.card}>
+          <div className={styles.cardHeading}><h2>公開内容</h2></div>
+          <div className={styles.recordText}><RecordFields fields={record.content} /></div>
+        </section>
+      )}
       {!preview && <RecordOperations section={section} record={record} onChanged={(message) => {
         setNotice(message);
         reload();
