@@ -16,6 +16,7 @@ import AdminDataState from "./AdminDataState";
 import AdminPageHeader from "./AdminPageHeader";
 import RecordStatus from "./RecordStatus";
 import RecordOperations from "./RecordOperations";
+import RecordChangeHistory from "./RecordChangeHistory";
 import styles from "../admin.module.css";
 
 function RecordFields({ fields }: { fields: AdminRecord["fields"] }) {
@@ -140,6 +141,7 @@ function RecordContent({
         reload();
       }} />}
       <RecentHistory section={section} id={id} preview={preview} />
+      {!preview && <RecordChangeHistory section={section} id={id} />}
     </>
   );
 }

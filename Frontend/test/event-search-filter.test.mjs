@@ -9,10 +9,18 @@ const events = [
 const all = { keyword: "", date: "すべて", tags: [], format: "all" };
 
 test("specific date filters by year, month and day", () => {
-  assert.equal(matchesDateFilter(new Date(2026, 10, 1, 13), "2026-11-01"), true);
-  assert.equal(matchesDateFilter(new Date(2027, 10, 1, 13), "2026-11-01"), false);
-  assert.equal(matchesDateFilter(new Date(2026, 10, 2, 13), "2026-11-01"), false);
-  assert.equal(matchesDateFilter(new Date(2026, 10, 1, 13), ""), false);
+  assert.equal(matchesDateFilter(new Date("2026-11-01T13:00:00+09:00"), "2026-11-01"), true);
+  assert.equal(matchesDateFilter(new Date("2027-11-01T13:00:00+09:00"), "2026-11-01"), false);
+  assert.equal(matchesDateFilter(new Date("2026-11-02T13:00:00+09:00"), "2026-11-01"), false);
+  assert.equal(matchesDateFilter(new Date("2026-11-01T13:00:00+09:00"), ""), false);
+});
+test("range bounds are inclusive and use the event's Tokyo start date", () => {
+  const beforeMidnight = { ...events[0], startAt: "2026-11-01T14:59:59Z" };
+  const midnight = { ...events[0], startAt: "2026-11-01T15:00:00Z" };
+  assert.equal(matchesEventFilters(beforeMidnight, { ...all, dateFrom: "2026-11-02" }), false);
+  assert.equal(matchesEventFilters(midnight, { ...all, dateFrom: "2026-11-02", dateTo: "2026-11-02" }), true);
+  assert.equal(matchesEventFilters(midnight, { ...all, dateTo: "2026-11-01" }), false);
+  assert.equal(matchesEventFilters(beforeMidnight, { ...all, dateTo: "2026-11-01" }), true);
 });
 test("API tag names participate in search and filtering independently of categories", () => {
   const tagged = { ...events[0], tagNames: ["TypeScript"] };

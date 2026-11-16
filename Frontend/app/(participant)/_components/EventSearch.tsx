@@ -70,7 +70,7 @@ export function EventSearch() {
   const [appliedFilters, setAppliedFilters] = useState(() =>
     readEventSearchQuery(searchParams),
   );
-  const { keyword, date, tags: appliedTags, format: appliedFormat } = appliedFilters;
+  const { keyword, date, dateFrom = "", dateTo = "", tags: appliedTags, format: appliedFormat } = appliedFilters;
   const [tag, setTag] = useState("すべて");
   const [location, setLocation] = useState("すべて");
   const [modalState, setModalState] = useState<"closed" | "open" | "closing">("closed");
@@ -80,6 +80,8 @@ export function EventSearch() {
   const [advancedKeyword, setAdvancedKeyword] = useState("");
   const [advancedDate, setAdvancedDate] = useState("すべて");
   const [advancedSpecificDate, setAdvancedSpecificDate] = useState("");
+  const [advancedFrom, setAdvancedFrom] = useState("");
+  const [advancedTo, setAdvancedTo] = useState("");
   const [advancedTags, setAdvancedTags] = useState<string[]>([]);
   const [advancedFormat, setAdvancedFormat] = useState<EventFormatFilter>("all");
   const [advancedSort, setAdvancedSort] = useState<SortOption>("おすすめ");
@@ -119,6 +121,8 @@ export function EventSearch() {
         matchesEventFilters(event, {
           keyword,
           date,
+          dateFrom,
+          dateTo,
           tags: appliedTags,
           format: appliedFormat,
         }) &&
@@ -135,6 +139,8 @@ export function EventSearch() {
     appliedSort,
     appliedTags,
     date,
+    dateFrom,
+    dateTo,
     events,
     keyword,
     location,
@@ -177,10 +183,14 @@ export function EventSearch() {
         : [...current, targetTag],
     );
   };
+  const isDateRange = advancedDate === "期間指定";
+  const invalidRange = isDateRange && Boolean(advancedFrom && advancedTo && advancedFrom > advancedTo);
   const advancedResultCount = events.filter((event) =>
     matchesEventFilters(event, {
       keyword: advancedKeyword,
-      date: advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
+      date: isDateRange ? "すべて" : advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
+      dateFrom: isDateRange ? advancedFrom : "",
+      dateTo: isDateRange ? advancedTo : "",
       tags: advancedTags,
       format: advancedFormat,
     }),
@@ -189,6 +199,8 @@ export function EventSearch() {
     setAdvancedKeyword("");
     setAdvancedDate("すべて");
     setAdvancedSpecificDate("");
+    setAdvancedFrom("");
+    setAdvancedTo("");
     setAdvancedTags([]);
     setAdvancedFormat("all");
     setAdvancedSort("おすすめ");
@@ -205,9 +217,12 @@ export function EventSearch() {
     window.history.replaceState(null, "", url);
   };
   const applyAdvancedSearch = () => {
+    if (invalidRange) return;
     updateAppliedSearch({
       keyword: advancedKeyword,
-      date: advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
+      date: isDateRange ? "すべて" : advancedDate === "日付指定" ? advancedSpecificDate : advancedDate,
+      dateFrom: isDateRange ? advancedFrom : "",
+      dateTo: isDateRange ? advancedTo : "",
       tags: advancedTags,
       format: advancedFormat,
     });
@@ -232,7 +247,13 @@ export function EventSearch() {
   if (keyword.trim()) {
     activeConditions.push({ id: "keyword", text: `キーワード：${keyword.trim()}`, clear: () => updateAppliedSearch({ keyword: "" }) });
   }
-  if (date !== "すべて") {
+  if (dateFrom || dateTo) {
+    activeConditions.push({
+      id: "date-range",
+      text: `開催期間：${dateFrom || "指定なし"} 〜 ${dateTo || "指定なし"}`,
+      clear: () => updateAppliedSearch({ date: "すべて", dateFrom: "", dateTo: "" }),
+    });
+  } else if (date !== "すべて") {
     activeConditions.push({ id: "date", text: `開催日：${date}`, clear: () => updateAppliedSearch({ date: "すべて" }) });
   }
   if (tag !== "すべて") {
@@ -274,7 +295,7 @@ export function EventSearch() {
           />
         </label>
         <div className="top-filter-row">
-          <EventQuickFilter label="開催日" value={date} choices={dates} onChange={(value) => updateAppliedSearch({ date: value })} />
+          <EventQuickFilter label="開催日" value={date} choices={dates} onChange={(value) => updateAppliedSearch({ date: value, dateFrom: "", dateTo: "" })} />
           <EventQuickFilter label="タグ" value={tag} choices={tags} onChange={setTag} />
           <EventQuickFilter label="場所" value={location} choices={locations} onChange={setLocation} />
         </div>
@@ -286,11 +307,13 @@ export function EventSearch() {
           onClick={() => {
             setAdvancedKeyword(keyword);
             setAdvancedDate(
-              /^\d{4}-\d{2}-\d{2}$/.test(date) ? "日付指定" : date,
+              dateFrom || dateTo ? "期間指定" : /^\d{4}-\d{2}-\d{2}$/.test(date) ? "日付指定" : date,
             );
             setAdvancedSpecificDate(
               /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "",
             );
+            setAdvancedFrom(dateFrom);
+            setAdvancedTo(dateTo);
             setAdvancedTags(tag === "すべて" ? appliedTags : [tag]);
             setAdvancedFormat(
               appliedFormat === "all" && location === "オンライン" ? "online" : appliedFormat,
@@ -368,7 +391,7 @@ export function EventSearch() {
               </label>
               <h3>開催日</h3>
               <div className="date-chip-grid">
-                {["すべて", "今週", "今月", "日付指定"].map((item) => (
+                {["すべて", "今週", "今月", "日付指定", "期間指定"].map((item) => (
                   <button
                     className={advancedDate === item ? "is-selected" : ""}
                     aria-pressed={advancedDate === item}
@@ -391,6 +414,17 @@ export function EventSearch() {
                     }
                   />
                 </label>
+              )}
+              {isDateRange && (
+                <>
+                  <label className="filter-label-text">開始日（JST）
+                    <input type="date" value={advancedFrom} onChange={(event) => setAdvancedFrom(event.target.value)} />
+                  </label>
+                  <label className="filter-label-text">終了日（JST）
+                    <input type="date" value={advancedTo} onChange={(event) => setAdvancedTo(event.target.value)} />
+                  </label>
+                  {invalidRange && <p role="alert">終了日を開始日以降にしてください。</p>}
+                </>
               )}
               <h3>タグ</h3>
               <div className="chip-grid">
@@ -436,7 +470,7 @@ export function EventSearch() {
               <button
                 type="button"
                 className="primary-button"
-                disabled={advancedDate === "日付指定" && !advancedSpecificDate}
+                disabled={invalidRange || (isDateRange && !advancedFrom && !advancedTo) || (advancedDate === "日付指定" && !advancedSpecificDate)}
                 onClick={applyAdvancedSearch}
               >
                 {advancedResultCount}件のイベントを見る

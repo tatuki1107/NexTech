@@ -406,6 +406,12 @@
   font-size: 19px;
   font-weight: 700;
 }
+.historySummary {
+  padding: 22px 23px;
+  font-size: 19px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .cardHeading p {
   margin-top: 4px;
   color: var(--muted);

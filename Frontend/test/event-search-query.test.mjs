@@ -5,9 +5,11 @@ import {
   updateEventSearchQuery,
 } from "../app/(participant)/_lib/event-search-query";
 
-const filters = { keyword: "workshop", date: "2026-11-09", tags: ["Docker", "Bun"], format: "hybrid" };
+const filters = { ...DEFAULT_EVENT_FILTERS, keyword: "workshop", date: "2026-11-09", tags: ["Docker", "Bun"], format: "hybrid" };
 const initial = new URLSearchParams({
-  ...filters,
+  keyword: filters.keyword,
+  date: filters.date,
+  format: filters.format,
   tags: filters.tags.join(","),
   source: "test",
 });
@@ -45,4 +47,15 @@ test("applying a replacement updates existing URL filters without adding in-page
     keyword: "workshop",
   });
   expect(result.toString()).toBe("tags=Bun");
+});
+
+test("a date range survives reload and clears independently of other filters", () => {
+  const next = reload({ date: "すべて", dateFrom: "2026-11-08", dateTo: "" });
+  expect(next.params.has("date")).toBe(false);
+  expect(next.filters.dateFrom).toBe("2026-11-08");
+  expect(next.filters.dateTo).toBe("");
+  const cleared = updateEventSearchQuery(next.params, { dateFrom: "", dateTo: "" });
+  expect(cleared.has("from")).toBe(false);
+  expect(cleared.get("keyword")).toBe("workshop");
+  expect(readEventSearchQuery(new URLSearchParams("from=2026-02-30")).dateFrom).toBe("");
 });

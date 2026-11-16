@@ -32,6 +32,7 @@ export function isAdminEndpoint(path: string, method: string): boolean {
   return method === "GET" && (
     /^admin\/moderation-actions$/.test(path) ||
     /^admin\/analytics\/(monthly-participants|breakdown)$/.test(path) ||
+    new RegExp(`^admin/(events|organizers|registrations)/${uuid}/history$`).test(path) ||
     new RegExp(`^admin/(events|organizers|registrations)(/${uuid})?$`).test(path)
   );
 }
