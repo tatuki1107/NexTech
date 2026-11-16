@@ -12,7 +12,7 @@ export default async function AdminLoginPage({
   const { returnTo } = await searchParams;
   const path = safeReturnTo(typeof returnTo === "string" ? returnTo : null);
   const destination =
-    /^\/admin\/(events|organizers|registrations|history)(?:[/?]|$)/.test(path)
+    /^\/admin\/(events|organizers|registrations|history|analytics)(?:[/?]|$)/.test(path)
       ? path
       : "/admin/events";
   return (
