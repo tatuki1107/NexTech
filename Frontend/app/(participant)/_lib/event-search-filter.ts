@@ -1,28 +1,26 @@
 import { matchesEventFormat, type EventFormatFilter } from "./event-format";
 import { tokyoDate } from "../../_lib/calendar-date";
 
-export function matchesDateFilter(eventDate: Date, filter: string) {
+export function quickDateLabel(day: string) {
+  return day ? `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}` : "";
+}
+
+export function matchesDateFilter(eventDate: Date, filter: string, now = new Date()) {
   if (filter === "すべて") return true;
+  const day = tokyoDate(eventDate);
+  if (!day) return false;
   if (/^\d{4}-\d{2}-\d{2}$/.test(filter)) {
-    return tokyoDate(eventDate) === filter;
+    return day === filter;
   }
-  const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
+  const today = tokyoDate(now);
   if (filter === "今月")
-    return (
-      eventDate.getFullYear() === now.getFullYear() &&
-      eventDate.getMonth() === now.getMonth()
-    );
+    return day.slice(0, 7) === today.slice(0, 7);
   if (filter === "今週") {
-    const endOfWeek = new Date(startOfToday);
-    endOfWeek.setDate(startOfToday.getDate() + (7 - startOfToday.getDay()));
-    return eventDate >= startOfToday && eventDate < endOfWeek;
+    const endOfWeek = new Date(today);
+    endOfWeek.setUTCDate(endOfWeek.getUTCDate() + (7 - endOfWeek.getUTCDay()));
+    return day >= today && day < endOfWeek.toISOString().slice(0, 10);
   }
-  return `${eventDate.getMonth() + 1}/${eventDate.getDate()}` === filter;
+  return quickDateLabel(day) === filter;
 }
 
 export type SearchableEvent = {
