@@ -11,7 +11,7 @@ export default function OrganizerLayout({
     <OrganizerProvider>
       <div className="flex flex-col text-fg-neutral-primary md:flex-row">
         <Sidebar />
-        <main className="min-w-0 flex-1 px-4 py-8 md:px-10 md:py-12">
+        <main className="min-w-0 flex-1 px-4 py-6 md:px-10 md:py-12">
           {children}
         </main>
       </div>

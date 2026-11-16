@@ -16,6 +16,7 @@ import AdminDataState from "./AdminDataState";
 import AdminPageHeader from "./AdminPageHeader";
 import RecordStatus from "./RecordStatus";
 import RecordOperations from "./RecordOperations";
+import { EventSuspensionComplete } from "./EventSuspension";
 import RecordChangeHistory from "./RecordChangeHistory";
 import styles from "../admin.module.css";
 
@@ -91,10 +92,12 @@ function RecordContent({
   section,
   id,
   preview = false,
+  filters = "",
 }: {
   section: RecordSection;
   id: string;
   preview?: boolean;
+  filters?: string;
 }) {
   const load = useCallback(
     (signal: AbortSignal) => getRecord(section, id, signal),
@@ -102,6 +105,7 @@ function RecordContent({
   );
   const { result, reload } = useAdminData(load);
   const [notice, setNotice] = useState("");
+  const [suspended, setSuspended] = useState(false);
   if (result.status === "loading") return <AdminDataState />;
   if (result.status === "error") {
     const message =
@@ -114,6 +118,7 @@ function RecordContent({
     );
   }
   const record = result.data;
+  if (suspended) return <EventSuspensionComplete id={id} title={record.title} filters={filters} />;
   return (
     <>
       {notice && <p role="status">{notice}</p>}
@@ -142,7 +147,7 @@ function RecordContent({
           <div className={styles.recordText}><RecordFields fields={record.content} /></div>
         </section>
       )}
-      {!preview && <RecordOperations section={section} record={record} onChanged={(message) => {
+      {!preview && <RecordOperations section={section} record={record} onSuspended={() => setSuspended(true)} onChanged={(message) => {
         setNotice(message);
         reload();
       }} />}
@@ -172,7 +177,7 @@ export function RecordDetails({
         <Link href={getListHref(section, filters)} className={styles.textLink}>
           ← {spec.title}に戻る
         </Link>
-        <RecordContent section={section} id={id} />
+        <RecordContent key={id} section={section} id={id} filters={filters} />
       </div>
     </>
   );

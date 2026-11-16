@@ -24,7 +24,7 @@ export function readEventSearchQuery(params: Pick<URLSearchParams, "get">): Even
   };
 }
 
-export function updateEventSearchQuery(params: URLSearchParams, changes: Partial<EventFilters>) {
+export function updateEventSearchQuery(params: URLSearchParams, changes: Partial<EventFilters>, persistAll = false) {
   const next = new URLSearchParams(params);
   const queryValues = {
     keyword: changes.keyword?.trim(),
@@ -37,7 +37,7 @@ export function updateEventSearchQuery(params: URLSearchParams, changes: Partial
 
   // Only synchronize URL-backed filters; ordinary in-page searches need not enter the address bar.
   for (const [key, value] of Object.entries(queryValues)) {
-    if (value === undefined || (!params.has(key) && key !== "from" && key !== "to")) continue;
+    if (value === undefined || (!persistAll && !params.has(key) && key !== "from" && key !== "to")) continue;
     if (value) next.set(key, value);
     else next.delete(key);
   }

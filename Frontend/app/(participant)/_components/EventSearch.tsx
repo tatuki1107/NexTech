@@ -64,17 +64,21 @@ export function EventSearch() {
   const { keyword, date, dateFrom = "", dateTo = "", tags: appliedTags, format: appliedFormat } = appliedFilters;
   const [tag, setTag] = useState("すべて");
   const [location, setLocation] = useState("すべて");
-  const [modalState, setModalState] = useState<"closed" | "open" | "closing">("closed");
+  const [linkedSearch] = useState(() => searchParams.get("filters") === "open");
+  const [modalState, setModalState] = useState<"closed" | "open" | "closing">(
+    linkedSearch ? "open" : "closed",
+  );
+  const isSpecificDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
   const advancedSearchTrigger = useRef<HTMLButtonElement>(null);
   const advancedSearchClose = useRef<HTMLButtonElement>(null);
   const keywordInput = useRef<HTMLInputElement>(null);
-  const [advancedKeyword, setAdvancedKeyword] = useState("");
-  const [advancedDate, setAdvancedDate] = useState("すべて");
-  const [advancedSpecificDate, setAdvancedSpecificDate] = useState("");
-  const [advancedFrom, setAdvancedFrom] = useState("");
-  const [advancedTo, setAdvancedTo] = useState("");
-  const [advancedTags, setAdvancedTags] = useState<string[]>([]);
-  const [advancedFormat, setAdvancedFormat] = useState<EventFormatFilter>("all");
+  const [advancedKeyword, setAdvancedKeyword] = useState(keyword);
+  const [advancedDate, setAdvancedDate] = useState(dateFrom || dateTo ? "期間指定" : isSpecificDate ? "日付指定" : date);
+  const [advancedSpecificDate, setAdvancedSpecificDate] = useState(isSpecificDate ? date : "");
+  const [advancedFrom, setAdvancedFrom] = useState(dateFrom);
+  const [advancedTo, setAdvancedTo] = useState(dateTo);
+  const [advancedTags, setAdvancedTags] = useState(appliedTags);
+  const [advancedFormat, setAdvancedFormat] = useState<EventFormatFilter>(appliedFormat);
   const [advancedSort, setAdvancedSort] = useState<SortOption>("おすすめ");
   const [appliedSort, setAppliedSort] = useState<SortOption>("おすすめ");
   const [errorMessage, setErrorMessage] = useState("");
@@ -193,11 +197,16 @@ export function EventSearch() {
   };
   const closeAdvancedSearch = () => {
     setModalState((current) => current === "open" ? "closing" : current);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("filters")) {
+      url.searchParams.delete("filters");
+      window.history.replaceState(null, "", url);
+    }
   };
   const updateAppliedSearch = (changes: Partial<EventFilters>) => {
     setAppliedFilters((current) => ({ ...current, ...changes }));
     const url = new URL(window.location.href);
-    const updated = updateEventSearchQuery(url.searchParams, changes).toString();
+    const updated = updateEventSearchQuery(url.searchParams, changes, linkedSearch).toString();
     if (updated === url.searchParams.toString()) return;
     url.search = updated;
     window.history.replaceState(null, "", url);

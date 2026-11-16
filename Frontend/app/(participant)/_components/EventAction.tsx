@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { apiRequest, errorMessage } from "../_lib/api";
 import { formatEventDate, type EventDetailData } from "../_lib/event-detail";
@@ -123,13 +124,15 @@ export function EventAction({
             if (busy) event.preventDefault();
           }}
         >
-          <h2 id="confirm-registration-title">{confirmationTitle}</h2>
+          <h2 id="confirm-registration-title">
+            {registered || waitlisted ? confirmationTitle : <>このイベントに<br />参加を申し込みますか？</>}
+          </h2>
           <div id="confirm-registration-description" className="registration-confirmation-details">
             <strong>{event.title}</strong>
             <dl>
-              <dt>日時</dt><dd>{formatEventDate(event.effectiveStartAt ?? event.startAt, event.endAt)}</dd>
-              <dt>場所</dt><dd>{venue}</dd>
-              <dt>主催</dt><dd>{event.organizerName}</dd>
+              <dt><Image src="/icons/figma-flow/calendar.svg" width={20} height={20} alt="" />日時</dt><dd>{formatEventDate(event.effectiveStartAt ?? event.startAt, event.endAt)}</dd>
+              <dt><Image src="/icons/figma-flow/location.svg" width={24} height={24} alt="" />場所</dt><dd>{venue}</dd>
+              <dt><Image src="/icons/figma-flow/organizer.svg" width={20} height={20} alt="" />主催</dt><dd>{event.organizerName}</dd>
             </dl>
           </div>
           {confirmationError && <p role="alert">{confirmationError}</p>}

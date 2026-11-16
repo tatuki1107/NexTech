@@ -8,8 +8,8 @@ export default function AccountSwitcher() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <div className="space-y-3 border-t border-white/20 p-3">
-      <p className="text-sm">{user.displayName}</p>
+    <div className="mt-3 space-y-3 py-2 md:mt-0 md:border-t md:border-white/20 md:p-3">
+      <p className="hidden text-sm md:block">{user.displayName}</p>
       <label className="block text-xs">
         主催者を切り替え
         <select
@@ -25,25 +25,27 @@ export default function AccountSwitcher() {
           ))}
         </select>
       </label>
-      <Link href="/mypage" className="block text-sm underline">
-        参加者画面へ
-      </Link>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await logoutOrganizer();
-          } catch (e) {
-            setError(errorMessage(e));
-            setBusy(false);
-          }
-        }}
-        className="text-sm underline"
-      >
-        ログアウト
-      </button>
+      <div className="flex flex-wrap gap-4 md:flex-col md:items-start md:gap-3">
+        <Link href="/mypage" className="text-sm md:underline">
+          参加者画面へ
+        </Link>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await logoutOrganizer();
+            } catch (e) {
+              setError(errorMessage(e));
+              setBusy(false);
+            }
+          }}
+          className="text-sm md:underline"
+        >
+          ログアウト
+        </button>
+      </div>
       {error && (
         <p role="alert" className="text-xs">
           {error}

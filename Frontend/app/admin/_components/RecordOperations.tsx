@@ -5,24 +5,26 @@ import type { FormEvent } from "react";
 import { apiRequest, errorMessage } from "@/app/_lib/api";
 import { SECTIONS } from "../_lib/records";
 import type { AdminRecord, RecordSection } from "../_lib/records";
+import { EventSuspensionButton } from "./EventSuspension";
 import styles from "../admin.module.css";
 
 type Action = { label: string; status?: string };
 const REVIEW: Action = { label: "確認済みを記録" };
 
 export default function RecordOperations({
-  section, record, onChanged,
+  section, record, onChanged, onSuspended,
 }: {
   section: RecordSection;
   record: AdminRecord;
   onChanged: (message: string) => void;
+  onSuspended: () => void;
 }) {
   const [action, setAction] = useState<Action | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const canSuspendEvent = section === "events" && record.status === "published";
   const statusAction = section === "events"
-    ? record.status === "published" ? { label: "公開停止", status: "draft" }
-      : record.status === "draft" ? { label: "公開・復帰", status: "published" } : null
+    ? record.status === "draft" ? { label: "公開・復帰", status: "published" } : null
     : section === "organizers"
       ? record.status === "active" ? { label: "主催者を停止", status: "suspended" }
         : { label: "主催者を復帰", status: "active" }
@@ -67,6 +69,7 @@ export default function RecordOperations({
             {[REVIEW, ...(statusAction ? [statusAction] : [])].map((option) => (
               <button key={option.label} type="button" className={styles.button} onClick={() => setAction(option)}>{option.label}</button>
             ))}
+            {canSuspendEvent && <EventSuspensionButton record={record} onSuspended={onSuspended} />}
           </div>
         ) : (
           <form method="post" onSubmit={submit}>
